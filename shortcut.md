@@ -9,7 +9,7 @@
 ```
 1. Ask for Input → "YouTube URL" (Type: URL)
 2. Get Contents of URL
-   - URL: https://YOUR-RENDER-URL.onrender.com/download
+   - URL: https://youtubedownload-ftpc.onrender.com/download
    - Method: POST
    - Request Body: JSON
      {
@@ -21,7 +21,7 @@
    - Show More → Get: Response Body
 3. Get Dictionary Value → Key: "download_url"
 4. Get Contents of URL
-   - URL: https://YOUR-RENDER-URL.onrender.com + download_url
+   - URL: https://youtubedownload-ftpc.onrender.com + download_url
    - Method: GET
 5. Save File
    - Ask Where to Save: On
