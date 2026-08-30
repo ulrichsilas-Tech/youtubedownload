@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: yt-dlp-api
+    env: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    disk:
+      name: downloads
+      mountPath: /tmp/downloads
+      sizeGB: 1
