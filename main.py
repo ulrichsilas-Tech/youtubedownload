@@ -2,7 +2,7 @@ import os
 import tempfile
 import shutil
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, HttpUrl
 import yt_dlp
@@ -126,7 +126,7 @@ async def install_shortcut():
 
 
 @app.post("/download", response_model=DownloadResponse)
-async def download(request: DownloadRequest, background_tasks: BackgroundTasks):
+async def download(request: DownloadRequest, http_request: Request, background_tasks: BackgroundTasks):
     temp_dir = Path(tempfile.mkdtemp(dir=DOWNLOAD_DIR))
     try:
         ydl_opts = get_ydl_opts(request.format, request.quality, temp_dir)
@@ -149,7 +149,7 @@ async def download(request: DownloadRequest, background_tasks: BackgroundTasks):
                 else:
                     raise HTTPException(status_code=500, detail="Download completed but file not found")
 
-        download_url = f"/file/{temp_dir.name}/{filename}"
+        download_url = f"{http_request.base_url}file/{temp_dir.name}/{filename}"
 
         background_tasks.add_task(cleanup_dir, temp_dir)
 

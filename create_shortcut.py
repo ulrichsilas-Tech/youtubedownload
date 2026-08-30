@@ -5,7 +5,7 @@ import io
 API_URL = "https://youtubedownload-ftpc.onrender.com"
 
 WFWorkflowActions = [
-    # 1. Ask for Input
+    # 1. Ask for Input (YouTube URL)
     {
         "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
         "WFWorkflowActionParameters": {
@@ -14,21 +14,23 @@ WFWorkflowActions = [
                 "WFParameterKey": "WFAskActionPrompt"
             },
             "WFAskActionType": "URL",
-            "WFInput": "",
         }
     },
-    # 2. URL - build endpoint
+    # 2. URL (API endpoint)
     {
         "WFWorkflowActionIdentifier": "is.workflow.actions.url",
         "WFWorkflowActionParameters": {
             "WFURLActionURL": API_URL + "/download",
         }
     },
-    # 3. Dictionary - build JSON body
+    # 3. Get Contents of URL (POST - request the download)
     {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.dictionary",
+        "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
         "WFWorkflowActionParameters": {
-            "WFItems": {
+            "WFInput": {"Value": {"Type": "Variable", "Variable": "URL"}, "WFParameterKey": "WFInput"},
+            "WFHTTPMethod": "POST",
+            "WFHTTPBodyType": "JSON",
+            "WFRequestBody": {
                 "Value": {
                     "WFSerializationType": "WFDictionaryPacker",
                     "Value": [
@@ -40,55 +42,31 @@ WFWorkflowActions = [
                         {"WFKey": "quality", "WFValue": "192"}
                     ]
                 }
-            }
-        }
-    },
-    # 4. Get Contents of URL (POST)
-    {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
-        "WFWorkflowActionParameters": {
-            "WFInput": {"Value": {"Type": "Variable", "Variable": "URL"}},
-            "WFHTTPMethod": "POST",
-            "WFHTTPHeaders": [
-                {
-                    "WFHeaderFieldType": "Header Field",
-                    "WFHeaderValue": "application/json",
-                    "WFHeaderFieldName": "Content-Type"
-                }
-            ],
-            "WFHTTPBodyType": "JSON",
-            "WFRequestBody": {"Value": {"Type": "Variable", "Variable": "Dictionary"}},
+            },
             "ShowProcedureOutput": False,
         }
     },
-    # 5. Get Dictionary Value - download_url
+    # 4. Get Dictionary Value (download_url → absolute URL)
     {
         "WFWorkflowActionIdentifier": "is.workflow.actions.getdictionaryvalue",
         "WFWorkflowActionParameters": {
             "WFGetDictionaryValueKey": "download_url",
-            "WFInput": {"Value": {"Type": "Variable", "Variable": "Contents of URL"}},
+            "WFInput": {"Value": {"Type": "Variable", "Variable": "Contents of URL"}, "WFParameterKey": "WFInput"},
         }
     },
-    # 6. URL - build full download link
-    {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.url",
-        "WFWorkflowActionParameters": {
-            "WFURLActionURL": API_URL + "{0}",
-        }
-    },
-    # 7. Get Contents of URL (GET file)
+    # 5. Get Contents of URL (GET - actual file download)
     {
         "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
         "WFWorkflowActionParameters": {
-            "WFInput": {"Value": {"Type": "Variable", "Variable": "URL"}},
+            "WFInput": {"Value": {"Type": "Variable", "Variable": "Dictionary Value"}, "WFParameterKey": "WFInput"},
             "ShowProcedureOutput": False,
         }
     },
-    # 8. Save File
+    # 6. Save File (ask where → pick On My iPhone > Downloads)
     {
         "WFWorkflowActionIdentifier": "is.workflow.actions.savefile",
         "WFWorkflowActionParameters": {
-            "WFInput": {"Value": {"Type": "Variable", "Variable": "Contents of URL"}},
+            "WFInput": {"Value": {"Type": "Variable", "Variable": "Contents of URL"}, "WFParameterKey": "WFInput"},
             "WFSaveFileAskWhere": True,
         }
     },
@@ -110,11 +88,9 @@ WFWorkflow = {
     "WFWorkflowOutputContentItemClasses": ["WFMediaContentItem", "WFFileContentItem"],
 }
 
-# Write plist to memory
 plist_buffer = io.BytesIO()
 plistlib.dump(WFWorkflow, plist_buffer, fmt=plistlib.FMT_BINARY)
 
-# Create shortcut as a zip file (zip method - works on newer iOS)
 output_path = "YouTube_Downloader.shortcut"
 with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
     zf.writestr("shortcut.plist", plist_buffer.getvalue())
