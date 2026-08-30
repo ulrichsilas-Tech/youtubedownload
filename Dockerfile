@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir yt-dlp fastapi uvicorn[standard] python-multipart
 
 COPY main.py .
+COPY YouTube_Downloader.shortcut .
 
 ENV PORT=8000
 EXPOSE 8000
