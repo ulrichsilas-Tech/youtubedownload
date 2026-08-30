@@ -1,4 +1,4 @@
-const CACHE_NAME = "ytdownloader-v2";
+const CACHE_NAME = "ytdownloader-v3";
 const ASSETS = [
   "./",
   "./manifest.json",
