@@ -4,16 +4,32 @@ import shutil
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
 import yt_dlp
 import uvicorn
 
 app = FastAPI(title="yt-dlp API", version="1.0.0")
 
+BASE_DIR = Path(__file__).parent
+STATIC_DIR = BASE_DIR / "static"
+
 DOWNLOAD_DIR = Path("/tmp/downloads")
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-SHORTCUT_FILE = Path(__file__).parent / "YouTube_Downloader.shortcut"
+SHORTCUT_FILE = BASE_DIR / "YouTube_Downloader.shortcut"
+
+app.mount("/icons", StaticFiles(directory=STATIC_DIR / "icons"), name="icons")
+
+
+@app.get("/manifest.json", response_class=FileResponse)
+async def manifest():
+    return FileResponse(STATIC_DIR / "manifest.json", media_type="application/manifest+json")
+
+
+@app.get("/sw.js", response_class=FileResponse)
+async def service_worker():
+    return FileResponse(STATIC_DIR / "sw.js", media_type="application/javascript")
 
 
 class DownloadRequest(BaseModel):
@@ -75,6 +91,16 @@ async def root():
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>YouTube Downloader</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#ff2d55">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="YT Download">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="YT Download">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#0f0f1a; color:#fff; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -166,6 +192,10 @@ async function download() {
     st.textContent = "Erreur : " + e.message;
     btn.disabled = false; sp.style.display = "none";
   }
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function() {});
+  });
 }
 </script>
 </body>

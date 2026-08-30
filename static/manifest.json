@@ -1,0 +1,22 @@
+{
+  "name": "YouTube Downloader",
+  "short_name": "YT Download",
+  "description": "Téléchargez vos vidéos YouTube en MP3 ou MP4",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f1a",
+  "theme_color": "#ff2d55",
+  "lang": "fr",
+  "categories": ["utilities", "media"],
+  "icons": [
+    { "src": "/icons/icon-76.png", "sizes": "76x76", "type": "image/png" },
+    { "src": "/icons/icon-120.png", "sizes": "120x120", "type": "image/png" },
+    { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "apple-touch-icon" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" }
+  ]
+}

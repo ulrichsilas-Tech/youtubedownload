@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY main.py .
 COPY YouTube_Downloader.shortcut .
+COPY static/ static/
 
 ENV PORT=8000
 EXPOSE 8000
