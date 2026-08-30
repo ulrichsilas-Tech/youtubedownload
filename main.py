@@ -17,6 +17,8 @@ STATIC_DIR = BASE_DIR / "static"
 DOWNLOAD_DIR = Path("/tmp/downloads")
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+COOKIES_FILE = DOWNLOAD_DIR / "cookies.txt"
+
 SHORTCUT_FILE = BASE_DIR / "YouTube_Downloader.shortcut"
 
 app.mount("/icons", StaticFiles(directory=STATIC_DIR / "icons"), name="icons")
@@ -53,6 +55,9 @@ def get_ydl_opts(format: str, quality: str, output_dir: Path):
         "no_warnings": True,
         "extract_flat": False,
     }
+
+    if COOKIES_FILE.exists():
+        base_opts["cookiefile"] = str(COOKIES_FILE)
 
     if format == "mp3":
         return {
@@ -122,6 +127,14 @@ async def root():
   .spinner { display:none; width:26px; height:26px; border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; margin:0 auto 8px; animation:spin .8s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .hint { margin-top:20px; text-align:center; color:#5a5a75; font-size:.75em; line-height:1.5; }
+  .gear { position:fixed; top:16px; right:16px; background:#1a1a2e; border:none; color:#8a8aa3; font-size:22px; width:44px; height:44px; border-radius:12px; cursor:pointer; z-index:5; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
+  .panel { background:#1a1a2e; border-radius:18px; padding:24px; width:100%; max-width:420px; max-height:90vh; overflow-y:auto; }
+  .panel h2 { text-align:center; margin-bottom:6px; font-size:1.25em; }
+  .sub2 { text-align:center; color:#8a8aa3; font-size:.85em; margin-bottom:14px; line-height:1.5; }
+  textarea { width:100%; background:#12121f; border:1px solid #2a2a44; color:#fff; border-radius:12px; padding:12px; font-size:13px; outline:none; font-family:monospace; resize:vertical; }
+  .btn2 { width:100%; margin-top:8px; border:none; color:#fff; border-radius:12px; padding:14px; font-size:15px; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#ff2d55,#ff5f7e); }
+  .btn2.ghost { background:#242442; color:#c9c9e0; }
 </style>
 </head>
 <body>
@@ -156,6 +169,20 @@ async def root():
   <div class="hint">⏱️ Le serveur gratuit redémarre après inactivité :<br>la première requête peut prendre ~30 s.</div>
 </div>
 
+<button class="gear" onclick="toggleSettings()">⚙️</button>
+<div class="overlay" id="settings" style="display:none;">
+  <div class="panel">
+    <h2>Cookies YouTube</h2>
+    <p class="sub2">YouTube bloque les serveurs sans connexion.<br>Colle ici les cookies de ton navigateur (si tu en as) pour débloquer les téléchargements.</p>
+    <textarea id="cookiesText" rows="8" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com	TRUE	/	TRUE	0	NID	abc123..."></textarea>
+    <div id="cookieStatus" style="margin:8px 0;font-size:.85em;color:#8a8aa3;"></div>
+    <button class="btn2" onclick="saveCookies()">💾 Enregistrer les cookies</button>
+    <button class="btn2 ghost" onclick="clearCookies()">🗑️ Supprimer</button>
+    <button class="btn2 ghost" onclick="toggleSettings()">Fermer</button>
+    <div class="hint" style="margin-top:10px;">Où trouver les cookies ?<br>Sur ton PC, connexion à YouTube sur Chrome → extension "Get cookies.txt" → exporter pour youtube.com → coller le contenu ici.</div>
+  </div>
+</div>
+
 <script>
 let fmt = "mp3";
 function setFmt(f) {
@@ -169,6 +196,41 @@ function paste() {
   if (navigator.clipboard && navigator.clipboard.readText) {
     navigator.clipboard.readText().then(t => { u.value = t; }).catch(() => {});
   }
+}
+function toggleSettings() {
+  const s = document.getElementById("settings");
+  s.style.display = s.style.display === "none" ? "flex" : "none";
+  if (s.style.display === "flex") refreshCookieStatus();
+}
+async function refreshCookieStatus() {
+  const el = document.getElementById("cookieStatus");
+  try {
+    const r = await fetch("/cookies");
+    const d = await r.json();
+    el.textContent = d.configured ? "✅ Cookies enregistrés" : "ℹ️ Aucun cookie pour l'instant";
+  } catch (e) { el.textContent = ""; }
+}
+async function saveCookies() {
+  const el = document.getElementById("cookieStatus");
+  const txt = document.getElementById("cookiesText").value;
+  if (!txt.trim()) { el.textContent = "Le champ est vide."; return; }
+  el.textContent = "Enregistrement…";
+  try {
+    const r = await fetch("/cookies", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({content: txt})
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail);
+    el.textContent = "✅ Cookies enregistrés ! Tu peux retester un téléchargement.";
+  } catch (e) { el.textContent = "❌ " + e.message; }
+}
+async function clearCookies() {
+  const el = document.getElementById("cookieStatus");
+  await fetch("/cookies", {method: "DELETE"});
+  document.getElementById("cookiesText").value = "";
+  el.textContent = "✅ Cookies supprimés";
 }
 async function download() {
   const u = document.getElementById("url").value.trim();
@@ -213,6 +275,40 @@ async def install_shortcut():
         filename="YouTube_Downloader.shortcut",
         media_type="application/octet-stream",
     )
+
+
+class CookiesRequest(BaseModel):
+    content: str | None = None
+
+
+@app.post("/cookies")
+async def upload_cookies(body: CookiesRequest | None = None):
+    text = None
+    if body is not None and body.content:
+        text = body.content
+
+    if not text or text.strip() == "":
+        raise HTTPException(status_code=400, detail="Aucun contenu reçu")
+
+    if "youtube.com" not in text and ".youtube" not in text:
+        raise HTTPException(
+            status_code=400,
+            detail="Ce fichier ne contient pas de cookies YouTube (.youtube.com introuvable)",
+        )
+
+    COOKIES_FILE.write_text(text, encoding="utf-8")
+    return {"success": True, "configured": True}
+
+
+@app.get("/cookies")
+async def cookies_status():
+    return {"configured": COOKIES_FILE.exists()}
+
+
+@app.delete("/cookies")
+async def delete_cookies():
+    COOKIES_FILE.unlink(missing_ok=True)
+    return {"success": True, "configured": False}
 
 
 @app.post("/download", response_model=DownloadResponse)

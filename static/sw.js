@@ -1,4 +1,4 @@
-const CACHE_NAME = "ytdownloader-v1";
+const CACHE_NAME = "ytdownloader-v2";
 const ASSETS = [
   "./",
   "./manifest.json",
@@ -34,6 +34,19 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (!url.pathname.startsWith("/")) return;
   if (url.pathname === "/download" || url.pathname.startsWith("/file/")) return;
+
+  if (e.request.mode === "navigate") {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match("./"))
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then((cached) => {
