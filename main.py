@@ -54,14 +54,47 @@ def _opts():
     return o
 
 
+_FALLBACK_CLIENTS = ["tv_embedded", "android_vr", "web_embedded", "tv"]
+
+
+def _extract(url: str, download: bool, output_dir: Path | None = None, req: "DownloadRequest | None" = None):
+    base = _opts()
+    if output_dir:
+        base["outtmpl"] = str(output_dir / "%(id)s.%(ext)s")
+    if req is not None:
+        base.update(_format_opts(req))
+
+    candidates = [dict(base)]
+    for client in _FALLBACK_CLIENTS:
+        candidates.append({
+            **base,
+            "extractor_args": {"youtube": {"player_client": [client]}},
+        })
+
+    last_error = None
+    for opts in candidates:
+        if output_dir:
+            for p in output_dir.iterdir():
+                if p.is_file():
+                    p.unlink(missing_ok=True)
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                return ydl.extract_info(url, download=download)
+        except yt_dlp.utils.DownloadError as e:
+            last_error = e
+            msg = str(e)
+            if "Sign in" not in msg and "not a bot" not in msg:
+                raise
+    raise last_error
+
+
 @app.get("/search")
 def search(q: str, limit: int = 12):
     q = q.strip()
     if not q:
         raise HTTPException(status_code=400, detail="Requête vide")
     try:
-        with yt_dlp.YoutubeDL({**_opts(), "skip_download": True}) as ydl:
-            info = ydl.extract_info(f"ytsearch{min(limit, 20)}:{q}", download=False)
+        info = _extract(f"ytsearch{min(limit, 20)}:{q}", download=False)
     except yt_dlp.utils.DownloadError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
@@ -91,26 +124,31 @@ class DownloadRequest(BaseModel):
 
 
 def _dl_opts(req: DownloadRequest, output_dir: Path):
-    o = {
-        **_opts(),
+    return {
         "outtmpl": str(output_dir / "%(id)s.%(ext)s"),
+        **{k: v for k, v in _format_opts(req).items()},
     }
+
+
+def _format_opts(req: DownloadRequest):
     if req.kind == "audio":
-        o["format"] = "bestaudio/best"
-        o["postprocessors"] = [{
-            "key": "FFmpegExtractAudio",
-            "preferredcodec": req.codec,
-            "preferredquality": req.bitrate,
-        }]
-    else:
-        if req.height and req.height != "best":
-            o["format"] = (
-                f"bestvideo[height<={req.height}]+bestaudio/best[height<={req.height}]/best"
-            )
-        else:
-            o["format"] = "bestvideo+bestaudio/best"
-        o["merge_output_format"] = "mp4"
-    return o
+        return {
+            "format": "bestaudio/best",
+            "postprocessors": [{
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": req.codec,
+                "preferredquality": req.bitrate,
+            }],
+        }
+    if req.height and req.height != "best":
+        return {
+            "format": f"bestvideo[height<={req.height}]+bestaudio/best[height<={req.height}]/best",
+            "merge_output_format": "mp4",
+        }
+    return {
+        "format": "bestvideo+bestaudio/best",
+        "merge_output_format": "mp4",
+    }
 
 
 def _slug(text: str, maxlen: int = 60):
@@ -126,8 +164,7 @@ def download(req: DownloadRequest, http_request: Request):
 
     temp_dir = Path(tempfile.mkdtemp(dir=DOWNLOAD_DIR))
     try:
-        with yt_dlp.YoutubeDL(_dl_opts(req, temp_dir)) as ydl:
-            info = ydl.extract_info(req.url, download=True) or {}
+        info = _extract(req.url, download=True, output_dir=temp_dir, req=req) or {}
     except yt_dlp.utils.DownloadError as e:
         shutil.rmtree(temp_dir, ignore_errors=True)
         raise HTTPException(status_code=400, detail=str(e))
