@@ -297,37 +297,19 @@ async def root():
 <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#0f0f1a; color:#fff; min-height:100vh; padding-bottom:80px; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#0f0f1a; color:#fff; min-height:100vh; }
   .header { position:sticky; top:0; z-index:20; background:#0f0f1a; padding:calc(14px + env(safe-area-inset-top)) 16px 12px; display:flex; align-items:center; gap:10px; }
   .header h1 { font-size:1.25em; flex:1; } .header h1 span { color:#ff2d55; }
   .iconbtn { background:#1a1a2e; border:none; color:#bbb; font-size:20px; width:40px; height:40px; border-radius:12px; cursor:pointer; }
-  .search { display:flex; gap:8px; padding:0 16px 12px; }
-  .search input { flex:1; background:#12121f; border:1px solid #2a2a44; color:#fff; border-radius:12px; padding:13px 16px; font-size:16px; outline:none; }
-  .search input:focus { border-color:#ff2d55; }
-  .search button { background:linear-gradient(135deg,#ff2d55,#ff5f7e); border:none; color:#fff; border-radius:12px; padding:0 22px; font-size:16px; font-weight:700; cursor:pointer; }
-  #content { padding:8px 16px 20px; }
-  .empty { text-align:center; color:#5a5a75; margin-top:60px; font-size:.95em; line-height:1.6; }
-  .spinner { width:34px; height:34px; border:3px solid rgba(255,255,255,.2); border-top-color:#ff2d55; border-radius:50%; margin:60px auto; animation:spin .8s linear infinite; }
+  main { padding:16px 20px calc(30px + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; }
+  main input { width:100%; background:#12121f; border:1px solid #2a2a44; color:#fff; border-radius:12px; padding:13px 16px; font-size:16px; outline:none; }
+  main input:focus { border-color:#ff2d55; }
+  .spinner { width:34px; height:34px; border:3px solid rgba(255,255,255,.2); border-top-color:#ff2d55; border-radius:50%; margin:24px auto; animation:spin .8s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
-  .row { display:flex; gap:12px; padding:10px 0; cursor:pointer; align-items:flex-start; }
-  .thumb { width:152px; aspect-ratio:16/9; border-radius:10px; object-fit:cover; background:#1a1a2e; flex-shrink:0; position:relative; }
-  .dur { position:absolute; right:4px; bottom:4px; background:rgba(0,0,0,.8); color:#fff; font-size:11px; padding:2px 5px; border-radius:4px; }
-  .row .meta { flex:1; min-width:0; }
-  .row .t { font-size:14px; font-weight:600; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .row .c { color:#8a8aa3; font-size:12px; margin-top:4px; }
-  .row .dl { margin-top:8px; background:#ff2d55; border:none; color:#fff; font-size:12px; font-weight:700; padding:7px 14px; border-radius:8px; cursor:pointer; }
-  .nav { position:fixed; bottom:0; left:0; right:0; z-index:30; background:#12121f; border-top:1px solid #242442; display:flex; padding-bottom:env(safe-area-inset-bottom); }
-  .nav button { flex:1; background:none; border:none; color:#6a6a85; font-size:11px; padding:10px 0 8px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; }
-  .nav button span { font-size:20px; }
-  .nav button.active { color:#ff2d55; }
   .overlay { position:fixed; inset:0; background:rgba(0,0,0,.82); z-index:100; display:flex; align-items:center; justify-content:center; padding:18px; }
   .panel { background:#1a1a2e; border-radius:18px; padding:20px; width:100%; max-width:460px; max-height:92vh; overflow-y:auto; }
   .panel h2 { font-size:1.2em; margin-bottom:6px; text-align:center; }
   .sub2 { color:#8a8aa3; font-size:.85em; margin-bottom:14px; text-align:center; line-height:1.5; }
-  .player { width:100%; aspect-ratio:16/9; background:#000; border-radius:12px; overflow:hidden; }
-  .player iframe { width:100%; height:100%; border:0; }
-  .vt { font-size:15px; font-weight:600; margin-top:12px; line-height:1.4; }
-  .vc { color:#8a8aa3; font-size:13px; margin-top:4px; }
   .btn { width:100%; margin-top:14px; background:linear-gradient(135deg,#ff2d55,#ff5f7e); border:none; color:#fff; border-radius:14px; padding:17px; font-size:17px; font-weight:700; cursor:pointer; }
   .btn.ghost { background:#242442; color:#c9c9e0; }
   .btn:disabled { opacity:.6; }
@@ -338,6 +320,8 @@ async def root():
   label { display:block; font-size:.8em; color:#8a8aa3; margin:12px 0 4px; font-weight:600; }
   #status { text-align:center; margin-top:12px; font-size:.88em; color:#8a8aa3; min-height:18px; word-break:break-word; }
   textarea { width:100%; background:#12121f; border:1px solid #2a2a44; color:#fff; border-radius:12px; padding:12px; font-size:13px; outline:none; font-family:monospace; resize:vertical; }
+  #filesBox { margin-top:24px; }
+  #filesBox h2 { font-size:1.05em; margin-bottom:6px; color:#c9c9e0; }
   .frow { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #1e1e33; }
   .ficon { font-size:26px; width:40px; text-align:center; }
   .fmeta { flex:1; min-width:0; }
@@ -355,73 +339,54 @@ async def root():
   <button class="iconbtn" onclick="openCookies()">⚙️</button>
 </div>
 
-<div id="tab-search">
-  <div class="search">
-    <input id="q" placeholder="Rechercher sur YouTube…" autocomplete="off" enterkeyhint="search">
-    <button onclick="runSearch()">Chercher</button>
+<main>
+  <label for="url">1. Colle un lien YouTube</label>
+  <input id="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off" inputmode="url" enterkeyhint="go">
+
+  <label>2. Choisis le format</label>
+  <div class="seg">
+    <div id="seg-audio" class="active" onclick="setKind('audio')">🎵 Audio</div>
+    <div id="seg-video" onclick="setKind('video')">🎬 Vidéo</div>
   </div>
-</div>
 
-<div id="content"></div>
-
-<div class="nav">
-  <button id="nav-search" class="active" onclick="showTopic('search')"><span>🔍</span>Recherche</button>
-  <button id="nav-files" onclick="showTopic('files')"><span>📂</span>Mes fichiers</button>
-  <button id="nav-settings" onclick="openCookies()"><span>ℹ️</span>Cookies</button>
-</div>
-
-<div class="overlay" id="playerOverlay" style="display:none;" onclick="if(event.target===this)closePlayer()">
-  <div class="panel">
-    <div class="player"><iframe id="playerFrame" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe></div>
-    <div class="vt" id="pvTitle"></div>
-    <div class="vc" id="pvChannel"></div>
-    <button class="btn" onclick="openDl()">⬇️ Télécharger</button>
-    <button class="btn ghost" onclick="closePlayer()">Fermer</button>
-  </div>
-</div>
-
-<div class="overlay" id="dlOverlay" style="display:none;" onclick="if(event.target===this)closeDl()">
-  <div class="panel">
-    <h2>💰 Téléchargement</h2>
-    <p class="sub2" id="dlTitle"></p>
+  <div id="audioOpts">
+    <label>Format audio</label>
     <div class="seg">
-      <div id="seg-audio" class="active" onclick="setKind('audio')">🎵 Audio</div>
-      <div id="seg-video" onclick="setKind('video')">🎬 Vidéo</div>
+      <div id="cc-mp3" class="active" onclick="setCodec('mp3')">MP3</div>
+      <div id="cc-m4a" onclick="setCodec('m4a')">M4A</div>
     </div>
-    <div id="audioOpts">
-      <label>Format audio</label>
-      <div class="seg">
-        <div id="cc-mp3" class="active" onclick="setCodec('mp3')">MP3</div>
-        <div id="cc-m4a" onclick="setCodec('m4a')">M4A</div>
-      </div>
-      <label>Qualité (kbps)</label>
-      <select id="bitrate">
-        <option value="128">128</option>
-        <option value="192" selected>192</option>
-        <option value="256">256</option>
-        <option value="320">320</option>
-      </select>
-    </div>
-    <div id="videoOpts" style="display:none;">
-      <label>Qualité vidéo (MP4)</label>
-      <select id="height">
-        <option value="360">360p</option>
-        <option value="480">480p</option>
-        <option value="720" selected>720p HD</option>
-        <option value="1080">1080p Full HD</option>
-        <option value="1440">1440p</option>
-        <option value="2160">2160p 4K</option>
-      </select>
-    </div>
-    <button class="btn" id="dlGo" onclick="startDownload()">Lancer le téléchargement</button>
-    <div id="status"></div>
-    <div id="successBox" style="display:none;">
-      <button class="btn" onclick="saveToFiles()">💾 Enregistrer dans Fichiers (Documents)</button>
-      <button class="btn ghost" onclick="viewLibrary()">📂 Voir mes fichiers</button>
-    </div>
-    <button class="btn ghost" onclick="closeDl()">Fermer</button>
+    <label>Qualité (kbps)</label>
+    <select id="bitrate">
+      <option value="128">128</option>
+      <option value="192" selected>192</option>
+      <option value="256">256</option>
+      <option value="320">320</option>
+    </select>
   </div>
-</div>
+
+  <div id="videoOpts" style="display:none;">
+    <label>Qualité vidéo (MP4)</label>
+    <select id="height">
+      <option value="360">360p</option>
+      <option value="480">480p</option>
+      <option value="720" selected>720p HD</option>
+      <option value="1080">1080p Full HD</option>
+      <option value="1440">1440p</option>
+      <option value="2160">2160p 4K</option>
+    </select>
+  </div>
+
+  <button class="btn" id="dlGo" onclick="startDownload()">⬇️ Télécharger</button>
+  <div id="status"></div>
+  <div id="successBox" style="display:none;">
+    <button class="btn" onclick="saveToFiles()">💾 Enregistrer dans Fichiers (Documents)</button>
+  </div>
+
+  <div id="filesBox" style="display:none;">
+    <h2>📂 Mes fichiers</h2>
+    <div id="files"></div>
+  </div>
+</main>
 
 <div class="overlay" id="cookiesOverlay" style="display:none;" onclick="if(event.target===this)closeCookies()">
   <div class="panel">
@@ -437,89 +402,14 @@ async def root():
 </div>
 
 <script>
-let RESULTS = [];
-let CUR = null;
 let CURFILE = null;
 let kind = "audio";
 let codec = "mp3";
 
 function $(id) { return document.getElementById(id); }
 
-function showTopic(t) {
-  $("nav-search").classList.toggle("active", t === "search");
-  $("nav-files").classList.toggle("active", t === "files");
-  if (t === "files") { loadFiles(); }
-  else { renderHome(); }
-}
-
-function renderHome() {
-  const c = $("content");
-  if (!RESULTS.length) {
-    c.innerHTML = '<div class="empty">🔍 Cherche une vidéo YouTube ci-dessus<br>puis appuie dessus pour la regarder et la télécharger.</div>';
-    return;
-  }
-  c.innerHTML = RESULTS.map(r => {
-    const dur = r.duration ? fmtDur(r.duration) : "";
-    return `<div class="row" onclick="watch('${r.id}')">` +
-      `<div class="thumb"><img src="${r.thumbnail || ''}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` +
-      (dur ? `<span class="dur">${dur}</span>` : "") + `</div>` +
-      `<div class="meta"><div class="t">${esc(r.title)}</div>` +
-      `<div class="c">${esc(r.channel || "")}</div>` +
-      `<button class="dl" onclick="event.stopPropagation();watch('${r.id}')">⬇️ Télécharger</button></div></div>`;
-  }).join("");
-}
-
-function fmtDur(s) {
-  s = Math.round(s || 0);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sec).padStart(2, "0");
-}
-
 function esc(s) {
   return String(s || "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-}
-
-async function runSearch() {
-  const q = $("q").value.trim();
-  if (!q) return;
-  const c = $("content");
-  c.innerHTML = '<div class="spinner"></div>';
-  try {
-    const r = await fetch("/search?q=" + encodeURIComponent(q));
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail);
-    RESULTS = d.results;
-    renderHome();
-  } catch (e) {
-    c.innerHTML = '<div class="empty">❌ ' + esc(e.message) + "<br><br>Si tu vois une erreur YouTube :<br/>ajoute tes cookies dans l'onglet Cookies puis réessaie.</div>";
-  }
-}
-$("q").addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
-
-function watch(id) {
-  const r = RESULTS.find(x => x.id === id);
-  if (!r) return;
-  CUR = r;
-  $("playerFrame").src = "https://www.youtube.com/embed/" + id + "?rel=0&autoplay=1";
-  $("pvTitle").textContent = r.title;
-  $("pvChannel").textContent = r.channel || "";
-  $("playerOverlay").style.display = "flex";
-}
-function closePlayer() {
-  $("playerOverlay").style.display = "none";
-  $("playerFrame").src = "";
-}
-
-function openDl() {
-  if (!CUR) return;
-  $("dlTitle").textContent = CUR.title;
-  $("status").textContent = "";
-  $("successBox").style.display = "none";
-  $("dlOverlay").style.display = "flex";
-}
-function closeDl() {
-  $("dlOverlay").style.display = "none";
-  if (CURFILE) { CURFILE = null; }
 }
 
 function setKind(k) {
@@ -538,16 +428,17 @@ function setCodec(c) {
 async function startDownload() {
   const st = $("status");
   const btn = $("dlGo");
-  if (!CUR) return;
+  const url = $("url").value.trim();
+  if (!url) { st.textContent = "❌ Colle d'abord un lien YouTube."; return; }
   const payload = {
-    url: CUR.url,
+    url: url,
     kind: kind,
     codec: codec,
     bitrate: $("bitrate").value,
     height: $("height").value,
   };
   btn.disabled = true;
-  st.textContent = "Téléchargement en cours… (serv. froid : ~30 s)";
+  st.textContent = "Téléchargement en cours… (serveur froid : ~30 s)";
   try {
     const r = await fetch("/download", {
       method: "POST",
@@ -557,12 +448,13 @@ async function startDownload() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || "Erreur serveur");
     CURFILE = d;
-    st.textContent = "✅ Fichier prêt : " + d.filename;
+    st.textContent = "✅ Prêt : " + d.filename;
     $("successBox").style.display = "block";
+    loadFiles();
   } catch (e) {
     st.textContent = "❌ " + e.message;
     if (/bot|sign in/i.test(e.message)) {
-      st.textContent = "❌ YouTube bloque le serveur. Ajoute tes cookies (onglet Cookies) puis réessaie.";
+      st.textContent = "❌ YouTube bloque le serveur. Ajoute tes cookies (⚙️) puis réessaie.";
     }
   } finally {
     btn.disabled = false;
@@ -595,30 +487,25 @@ async function saveToFiles() {
 }
 
 async function loadFiles() {
-  const c = $("content");
-  c.innerHTML = '<div class="spinner"></div>';
   try {
     const r = await fetch("/files");
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail);
-    if (!d.files.length) {
-      c.innerHTML = `<div class="empty">📂 Aucun fichier pour l'instant.<br>Cherche une vidéo et lance un téléchargement.</div>`;
-      return;
-    }
-    c.innerHTML = d.files.map(f => {
+    const box = $("filesBox");
+    if (!d.files.length) { box.style.display = "none"; return; }
+    box.style.display = "block";
+    $("files").innerHTML = d.files.map(f => {
       const audio = /[.](mp3|m4a|webm)$/i.test(f.name);
       const icon = audio ? "🎵" : "🎬";
       return `<div class="frow"><div class="ficon">${icon}</div>` +
         `<div class="fmeta"><div class="fname">${esc(f.name)}</div><div class="fsize">${fmtSize(f.size)}</div></div>` +
         `<div class="fbtns">` +
-        `<button title="Enregistrer dans Fichiers" onclick="saveFileTo('${esc(f.name)}','${f.download_url}')">💾</button>` +
+        `<button title="Enregistrer dans Fichiers" onclick="saveFileByName('${esc(f.name)}','${f.download_url}')">💾</button>` +
         `<button title="Ouvrir" onclick="window.open('${f.download_url}')">▶️</button>` +
         `<button title="Supprimer" onclick="delFile('${esc(f.name)}')">🗑️</button>` +
         `</div></div>`;
     }).join("");
-  } catch (e) {
-    c.innerHTML = '<div class="empty">❌ ' + esc(e.message) + "</div>";
-  }
+  } catch (e) { /* silencieux */ }
 }
 
 function fmtSize(b) {
@@ -628,26 +515,26 @@ function fmtSize(b) {
   return (b / 1048576).toFixed(1) + " Mo";
 }
 
-let _pendingFile = null;
-function saveFileTo(name, url) {
-  _pendingFile = {name: name, download_url: url};
-  CURFILE = _pendingFile;
-  openDl();
-  $("dlTitle").textContent = name;
-  $("status").textContent = "";
-  $("successBox").style.display = "block";
+async function saveFileByName(name, url) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const f = new File([blob], name, {type: blob.type || "application/octet-stream"});
+  if (navigator.share && navigator.canShare && navigator.canShare({files: [f]})) {
+    await navigator.share({files: [f]});
+  } else {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 }
 
 async function delFile(name) {
   if (!confirm("Supprimer " + name + " ?")) return;
   await fetch("/files/" + encodeURIComponent(name), {method: "DELETE"});
   loadFiles();
-}
-
-function viewLibrary() {
-  closeDl();
-  closePlayer();
-  showTopic("files");
 }
 
 function openCookies() {
@@ -681,6 +568,9 @@ async function clearCookies() {
   $("cookiesText").value = "";
   $("cookieStatus").textContent = "✅ Cookies supprimés";
 }
+
+$("url").addEventListener("keydown", e => { if (e.key === "Enter") startDownload(); });
+loadFiles();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
