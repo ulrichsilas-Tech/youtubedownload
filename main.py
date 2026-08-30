@@ -192,6 +192,8 @@ async function download() {
     st.textContent = "Erreur : " + e.message;
     btn.disabled = false; sp.style.display = "none";
   }
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('/sw.js').catch(function() {});
