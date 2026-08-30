@@ -43,33 +43,37 @@ async def health():
     return {"status": "ok"}
 
 
-def _opts():
+_FALLBACK_CLIENTS = ["tv_embedded", "android_vr", "web_embedded", "tv"]
+
+
+def _opts(with_cookies: bool = True):
     o = {
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
     }
-    if COOKIES_FILE.exists():
+    if with_cookies and COOKIES_FILE.exists():
         o["cookiefile"] = str(COOKIES_FILE)
     return o
 
 
-_FALLBACK_CLIENTS = ["tv_embedded", "android_vr", "web_embedded", "tv"]
-
-
 def _extract(url: str, download: bool, output_dir: Path | None = None, req: "DownloadRequest | None" = None):
-    base = _opts()
-    if output_dir:
-        base["outtmpl"] = str(output_dir / "%(id)s.%(ext)s")
-    if req is not None:
-        base.update(_format_opts(req))
+    def build(with_cookies: bool):
+        base = _opts(with_cookies=with_cookies)
+        if output_dir:
+            base["outtmpl"] = str(output_dir / "%(id)s.%(ext)s")
+        if req is not None:
+            base.update(_format_opts(req))
+        candidates = [dict(base)]
+        for client in _FALLBACK_CLIENTS:
+            candidates.append({
+                **base,
+                "extractor_args": {"youtube": {"player_client": [client]}},
+            })
+        return candidates
 
-    candidates = [dict(base)]
-    for client in _FALLBACK_CLIENTS:
-        candidates.append({
-            **base,
-            "extractor_args": {"youtube": {"player_client": [client]}},
-        })
+    candidates = list(build(with_cookies=True))
+    candidates.extend(build(with_cookies=False))
 
     last_error = None
     for opts in candidates:
