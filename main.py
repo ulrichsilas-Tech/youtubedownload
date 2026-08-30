@@ -68,50 +68,108 @@ async def health():
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>YouTube Downloader</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #1a1a2e; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-            .container { max-width: 400px; width: 90%; text-align: center; }
-            h1 { font-size: 2em; margin-bottom: 10px; }
-            .subtitle { color: #888; margin-bottom: 30px; }
-            .btn { display: block; width: 100%; padding: 18px; margin: 15px 0; border: none; border-radius: 12px; font-size: 1.1em; font-weight: 600; cursor: pointer; text-decoration: none; color: #fff; }
-            .btn-primary { background: linear-gradient(135deg, #ff0050, #ff0050); }
-            .btn-secondary { background: linear-gradient(135deg, #333, #555); }
-            .info { margin-top: 30px; color: #888; font-size: 0.9em; }
-            .steps { text-align: left; margin-top: 20px; background: #16213e; padding: 20px; border-radius: 12px; }
-            .steps li { margin: 10px 0; color: #ccc; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>YouTube Downloader</h1>
-            <p class="subtitle">Téléchargez vos vidéos YouTube en MP3/MP4</p>
-            <a href="/install-shortcut" class="btn btn-primary">📱 Installer le raccourci iPhone</a>
-            <a href="/docs" class="btn btn-secondary">📖 API Documentation</a>
-            <div class="info">
-                <p>Après installation du raccourci, ouvrez l'app <strong>Raccourcis</strong> sur votre iPhone et collez une URL YouTube.</p>
-            </div>
-            <div class="steps">
-                <strong>Comment utiliser :</strong>
-                <ol>
-                    <li>Installez le raccourci sur votre iPhone</li>
-                    <li>Ouvrez l'app Raccourcis</li>
-                    <li>Lancez "YouTube Downloader"</li>
-                    <li>Collez une URL YouTube</li>
-                    <li>Le fichier MP3 sera sauvegardé dans iCloud Drive</li>
-                </ol>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    return """<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>YouTube Downloader</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#0f0f1a; color:#fff; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .card { background:#1a1a2e; border-radius:20px; padding:28px 22px; max-width:420px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .logo { text-align:center; margin-bottom:6px; font-size:44px; }
+  h1 { text-align:center; font-size:1.6em; margin-bottom:4px; }
+  .sub { text-align:center; color:#8a8aa3; font-size:.9em; margin-bottom:22px; }
+  label { display:block; font-size:.8em; color:#8a8aa3; margin:14px 0 6px; font-weight:600; letter-spacing:.3px; }
+  input[type="url"], input[type="text"] { width:100%; background:#12121f; border:1px solid #2a2a44; color:#fff; border-radius:12px; padding:14px 16px; font-size:16px; outline:none; }
+  input:focus { border-color:#ff2d55; }
+  .fmt-grid { display:flex; gap:10px; margin-top:8px; }
+  .fmt-btn { flex:1; background:#12121f; border:2px solid #2a2a44; color:#fff; border-radius:12px; padding:14px 0; font-size:16px; font-weight:600; cursor:pointer; text-align:center; }
+  .fmt-btn.active { background:#ff2d55; border-color:#ff2d55; color:#fff; }
+  select { width:100%; background:#12121f; border:1px solid #2a2a44; color:#fff; border-radius:12px; padding:14px 16px; font-size:16px; outline:none; }
+  .btn { width:100%; margin-top:22px; background:linear-gradient(135deg,#ff2d55,#ff5f7e); border:none; color:#fff; border-radius:14px; padding:18px; font-size:18px; font-weight:700; cursor:pointer; transition:transform .1s; }
+  .btn:active { transform:scale(.97); }
+  .btn:disabled { opacity:.6; }
+  #status { text-align:center; margin-top:16px; font-size:.9em; color:#8a8aa3; min-height:20px; word-break:break-word; }
+  .spinner { display:none; width:26px; height:26px; border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; margin:0 auto 8px; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .hint { margin-top:20px; text-align:center; color:#5a5a75; font-size:.75em; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🎵</div>
+  <h1>YouTube Downloader</h1>
+  <p class="sub">Collez un lien YouTube pour télécharger</p>
+
+  <label>Lien YouTube</label>
+  <input type="url" id="url" placeholder="https://youtube.com/..." autocomplete="off">
+  <div style="margin-top:4px; text-align:right;"><button onclick="paste()" style="background:none;border:none;color:#ff5f7e;font-size:.8em;cursor:pointer;">📋 Coller</button></div>
+
+  <label>Format</label>
+  <div class="fmt-grid">
+    <div class="fmt-btn active" id="fmt-mp3" onclick="setFmt('mp3')">MP3</div>
+    <div class="fmt-btn" id="fmt-mp4" onclick="setFmt('mp4')">MP4</div>
+  </div>
+
+  <div id="qualityBlock">
+    <label>Qualité audio</label>
+    <select id="quality">
+      <option value="128">128 kbps (petit)</option>
+      <option value="192" selected>192 kbps (standard)</option>
+      <option value="256">256 kbps (bon)</option>
+      <option value="320">320 kbps (max)</option>
+    </select>
+  </div>
+
+  <button class="btn" id="go" onclick="download()">Télécharger</button>
+  <div class="spinner" id="spinner"></div>
+  <div id="status"></div>
+  <div class="hint">⏱️ Le serveur gratuit redémarre après inactivité :<br>la première requête peut prendre ~30 s.</div>
+</div>
+
+<script>
+let fmt = "mp3";
+function setFmt(f) {
+  fmt = f;
+  document.getElementById("fmt-mp3").classList.toggle("active", f === "mp3");
+  document.getElementById("fmt-mp4").classList.toggle("active", f === "mp4");
+  document.getElementById("qualityBlock").style.display = f === "mp3" ? "block" : "none";
+}
+function paste() {
+  const u = document.getElementById("url");
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    navigator.clipboard.readText().then(t => { u.value = t; }).catch(() => {});
+  }
+}
+async function download() {
+  const u = document.getElementById("url").value.trim();
+  const q = document.getElementById("quality").value;
+  const st = document.getElementById("status");
+  const sp = document.getElementById("spinner");
+  const btn = document.getElementById("go");
+  if (!u) { st.textContent = "Collez d'abord un lien YouTube."; return; }
+  btn.disabled = true; st.textContent = "Téléchargement en cours… (patiente, le serveur peut être en veille)"; sp.style.display = "block";
+  try {
+    const res = await fetch("/download", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({url: u, format: fmt, quality: q})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.error || "Erreur serveur");
+    st.textContent = "Fichier prêt ! Ouverture du téléchargement…";
+    window.location.href = data.download_url;
+  } catch (e) {
+    st.textContent = "Erreur : " + e.message;
+    btn.disabled = false; sp.style.display = "none";
+  }
+}
+</script>
+</body>
+</html>"""
 
 
 @app.get("/install-shortcut")
