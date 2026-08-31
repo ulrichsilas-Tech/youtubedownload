@@ -10,6 +10,8 @@ services:
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: DOWNLOAD_DIR
+        value: "/tmp/downloads"
     disk:
       name: downloads
       mountPath: /tmp/downloads
