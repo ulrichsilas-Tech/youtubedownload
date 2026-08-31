@@ -145,12 +145,20 @@ def _format_opts(req: DownloadRequest):
             }],
         }
     if req.height and req.height != "best":
+        h = int(req.height)
         return {
-            "format": f"bestvideo[height<={req.height}]+bestaudio/best[height<={req.height}]/best",
+            "format": (
+                f"bestvideo[vcodec^=avc1][height<={h}]+bestaudio[acodec^=mp4a]"
+                f"/bestvideo[vcodec^=avc1][height<={h}]+bestaudio"
+                f"/bestvideo[height<={h}]+bestaudio/best[height<={h}]/best"
+            ),
             "merge_output_format": "mp4",
         }
     return {
-        "format": "bestvideo+bestaudio/best",
+        "format": (
+            "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]"
+            "/bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best"
+        ),
         "merge_output_format": "mp4",
     }
 
