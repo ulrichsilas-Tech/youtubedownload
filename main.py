@@ -16,7 +16,7 @@ app = FastAPI(title="YT Download", version="2.0.0")
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
 
-DOWNLOAD_DIR = Path("/tmp/downloads")
+DOWNLOAD_DIR = BASE_DIR / "tmp" / "downloads"
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 LIBRARY_DIR = DOWNLOAD_DIR / "library"
 LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
@@ -246,7 +246,12 @@ def delete_file(name: str):
     filepath = LIBRARY_DIR / name
     if not filepath.exists():
         raise HTTPException(status_code=404, detail="Fichier introuvable")
-    filepath.unlink()
+    try:
+        filepath.unlink()
+    except PermissionError:
+        raise HTTPException(status_code=500, detail="Fichier verrouillé par un autre processus. Fermez le lecteur média et réessayez.")
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Erreur suppression: {e}")
     return {"success": True}
 
 
