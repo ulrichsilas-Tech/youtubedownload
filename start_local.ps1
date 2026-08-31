@@ -55,25 +55,30 @@ if ($lanIP) {
     Write-Host "  (IP locale introuvable)"
 }
 
-Write-Host "`n[3/3] Lancement du tunnel public Cloudflare..." -ForegroundColor Green
-Write-Host "(URL valable tant que cette fenetre est ouverte)" -ForegroundColor Cyan
+Write-Host "`n[3/3] Ton lien permanent (utilise celui-ci sur l'iPhone) :" -ForegroundColor Green
 
-$cf = Get-Command cloudflared -ErrorAction SilentlyContinue
-if (-not $cf) {
-    $cfPath = "C:\Program Files (x86)\cloudflared\cloudflared.exe"
-    if (Test-Path -LiteralPath $cfPath) { $cf = Get-Item -LiteralPath $cfPath }
-}
-if ($cf) {
-    $cfExe = if ($cf.Source) { $cf.Source } else { $cf.FullName }
-    $ErrorActionPreference = "Continue"
+$tail = "C:\Program Files\Tailscale\tailscale.exe"
+$tsUrl = $null
+if (Test-Path -LiteralPath $tail) {
     try {
-        & $cfExe tunnel --url "http://localhost:$port"
-    } catch {
-        Write-Host "Cloudflared a echoue. Utilise l'IP locale ci-dessus (iPhone sur le meme WiFi)." -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "Cloudflared introuvable. Utilise l'IP locale ci-dessus. (installe : winget install Cloudflare.cloudflared)" -ForegroundColor Yellow
+        $json = & $tail status --json | ConvertFrom-Json
+        $tsUrl = "https://" + $json.Self.DNSName.TrimEnd('.')
+    } catch { }
 }
+if ($tsUrl) {
+    Write-Host "  $tsUrl" -ForegroundColor Cyan
+    Write-Host "  (URL fixe : meme PC, meme WiFi ou en dehors, cette adresse ne change jamais)" -ForegroundColor Yellow
+} else {
+    Write-Host "  (Tailscale introuvable. Utilise l'IP locale ci-dessus avec ton iPhone sur le meme WiFi.)" -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "==============================================" -ForegroundColor Cyan
+Write-Host "  Serveur en cours d'execution.                 " -ForegroundColor Green
+Write-Host "  Ferme cette fenetre pour tout arreter.       " -ForegroundColor Yellow
+Write-Host "==============================================" -ForegroundColor Cyan
+Write-Host ""
+Read-Host "Appuie sur Entree pour arreter le serveur"
 
 # Arrêt du serveur quand on ferme
 if ($serverProc -and -not $serverProc.HasExited) { Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue }
