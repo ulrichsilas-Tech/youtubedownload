@@ -16,7 +16,7 @@ app = FastAPI(title="YT Download", version="2.0.0")
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
 
-DOWNLOAD_DIR = BASE_DIR / "tmp" / "downloads"
+DOWNLOAD_DIR = Path(os.getenv("DOWNLOAD_DIR", BASE_DIR / "tmp" / "downloads"))
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 LIBRARY_DIR = DOWNLOAD_DIR / "library"
 LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
