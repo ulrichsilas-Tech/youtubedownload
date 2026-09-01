@@ -98,7 +98,7 @@
                                 </div>
                             </div>
                             <button class="result-download" @click.stop="openPicker(result)" :disabled="pickingLoading && pickingId===result.id" :title="'Choisir format pour ' + result.title">
-                                <span x-show="!(pickingLoading && pickingId===result.id)">⚙️</span>
+                                <span x-show="!(pickingLoading && pickingId===result.id)">⬇️</span>
                                 <span x-show="pickingLoading && pickingId===result.id" class="spinner-mini"></span>
                             </button>
                         </div>
@@ -111,46 +111,43 @@
                         <!-- Sélecteur de format / qualité avant téléchargement -->
                         <div x-show="pickingId === result.id" class="picker">
                             <h4>Choisir le format <button class="close" @click="closePicker()">✕</button></h4>
-                            <div x-show="pickingLoading" class="loading" style="padding:8px">Analyse des formats…</div>
-                            <div x-show="!pickingLoading">
-                                <div class="segmented">
-                                    <button @click="pickKind='video'" :class="{active: pickKind==='video'}" x-show="!pickingInfo || pickingInfo.supports_video">🎬 Vidéo</button>
-                                    <button @click="pickKind='audio'" :class="{active: pickKind==='audio'}" x-show="!pickingInfo || pickingInfo.supports_audio">🎵 Audio</button>
-                                </div>
-                                <div x-show="pickKind==='video'">
-                                    <label>Qualité vidéo</label>
-                                    <select x-model="pickHeight">
-                                        <option value="360">360p</option>
-                                        <option value="480">480p</option>
-                                        <option value="720">720p HD</option>
-                                        <option value="1080">1080p</option>
-                                        <option value="best">Best disponible</option>
-                                    </select>
-                                    <div class="hint" x-show="pickingInfo">Disponible : <span x-text="pickingInfo ? pickingInfo.formats.video.join(', ') : 'analyse…'"></span> • Choisis la qualité souhaitée, le serveur prendra le meilleur ≤ demandé.</div>
-                                    <div class="hint" x-show="!pickingInfo">Analyse en cours…</div>
-                                </div>
-                                <div x-show="pickKind==='audio'">
-                                    <label>Format audio</label>
-                                    <div class="segmented">
-                                        <button @click="pickCodec='mp3'" :class="{active: pickCodec==='mp3'}">MP3</button>
-                                        <button @click="pickCodec='m4a'" :class="{active: pickCodec==='m4a'}">M4A</button>
-                                        <button @click="pickCodec='opus'" :class="{active: pickCodec==='opus'}">OPUS</button>
-                                    </div>
-                                    <label>Bitrate</label>
-                                    <select x-model="pickBitrate">
-                                        <option value="128">128 kbps</option>
-                                        <option value="192">192 kbps</option>
-                                        <option value="256">256 kbps</option>
-                                        <option value="320">320 kbps</option>
-                                    </select>
-                                    <div class="hint" x-show="pickingInfo">Audio dispo : <span x-text="pickingInfo ? pickingInfo.formats.audio.join(', ') : ''"></span></div>
-                                </div>
-                                <button class="btn primary" @click="confirmPickerDownload(result)" :disabled="downloadingId===result.id">
-                                    <span x-show="downloadingId!==result.id">⬇️ Télécharger cette vidéo</span>
-                                    <span x-show="downloadingId===result.id" class="spinner-inline"></span>
-                                </button>
-                                <div class="hint">Seule cette vidéo sera téléchargée, pas toute la liste.</div>
+                            <div x-show="pickingLoading" class="loading" style="padding:4px 0 8px;font-size:12px;color:var(--text-muted)">Analyse des formats disponibles…</div>
+                            <div class="segmented">
+                                <button @click="pickKind='video'" :class="{active: pickKind==='video'}" x-show="!pickingInfo || pickingInfo.supports_video">🎬 Vidéo</button>
+                                <button @click="pickKind='audio'" :class="{active: pickKind==='audio'}" x-show="!pickingInfo || pickingInfo.supports_audio">🎵 Audio</button>
                             </div>
+                            <div x-show="pickKind==='video'">
+                                <label>Qualité vidéo</label>
+                                <select x-model="pickHeight">
+                                    <option value="360">360p</option>
+                                    <option value="480">480p</option>
+                                    <option value="720">720p HD</option>
+                                    <option value="1080">1080p Full HD</option>
+                                    <option value="best">Best disponible</option>
+                                </select>
+                                <div class="hint" x-show="pickingInfo">Disponible : <span x-text="pickingInfo ? pickingInfo.formats.video.join(', ') : 'analyse…'"></span> • Le serveur prendra le meilleur ≤ demandé.</div>
+                            </div>
+                            <div x-show="pickKind==='audio'">
+                                <label>Format audio</label>
+                                <div class="segmented">
+                                    <button @click="pickCodec='mp3'" :class="{active: pickCodec==='mp3'}">MP3</button>
+                                    <button @click="pickCodec='m4a'" :class="{active: pickCodec==='m4a'}">M4A</button>
+                                    <button @click="pickCodec='opus'" :class="{active: pickCodec==='opus'}">OPUS</button>
+                                </div>
+                                <label>Bitrate</label>
+                                <select x-model="pickBitrate">
+                                    <option value="128">128 kbps</option>
+                                    <option value="192">192 kbps</option>
+                                    <option value="256">256 kbps</option>
+                                    <option value="320">320 kbps</option>
+                                </select>
+                                <div class="hint" x-show="pickingInfo">Audio dispo : <span x-text="pickingInfo ? pickingInfo.formats.audio.join(', ') : ''"></span></div>
+                            </div>
+                            <button class="btn primary" @click="confirmPickerDownload(result)" :disabled="downloadingId===result.id">
+                                <span x-show="downloadingId!==result.id">⬇️ Télécharger cette vidéo</span>
+                                <span x-show="downloadingId===result.id" class="spinner-inline"></span>
+                            </button>
+                            <div class="hint">Seule cette vidéo sera téléchargée, pas toute la liste.</div>
                         </div>
                     </div>
                 </template>
