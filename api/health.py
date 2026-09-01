@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import JSONResponse
 from typing import Dict
 import time
 import logging
@@ -93,18 +94,26 @@ async def health_detailed():
 
 
 async def rate_limit_middleware(request: Request, call_next):
-    if request.url.path.startswith("/api/v1/download") or request.url.path.startswith("/api/v1/search"):
+    path = request.url.path
+    # Polling du statut (GET /download/{id}) et fichiers/health ne doivent pas etre limites
+    # Seul le demarrage d'un telechargement et la recherche sont limites
+    should_limit = (
+        (path == "/api/v1/download" and request.method == "POST")
+        or (path == "/api/v1/search/download" and request.method == "POST")
+        or path.startswith("/api/v1/search")
+    )
+    if should_limit:
         client_ip = get_client_ip(request)
         if not check_rate_limit(client_ip):
-            raise HTTPException(
+            return JSONResponse(
                 status_code=429,
-                detail={
+                content={
                     "code": "RATE_LIMITED",
                     "message": f"Rate limit exceeded for {client_ip}",
                     "user_message": "Trop de requêtes. Attendez un moment avant de réessayer.",
                     "retry_after": config.RATE_LIMIT_WINDOW_SECONDS
-                }
+                },
             )
-    
+
     response = await call_next(request)
     return response

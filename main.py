@@ -3,7 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -80,19 +80,25 @@ async def root():
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    if isinstance(exc.detail, dict) and "user_message" in exc.detail:
-        return exc.detail
-    return {"code": "HTTP_ERROR", "message": exc.detail, "user_message": str(exc.detail)}
+    if isinstance(exc.detail, dict):
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"code": "HTTP_ERROR", "message": str(exc.detail), "user_message": str(exc.detail)},
+    )
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled error: {exc}", exc_info=True)
-    return {
-        "code": "INTERNAL_ERROR",
-        "message": str(exc),
-        "user_message": "Une erreur inattendue s'est produite. Réessayez plus tard."
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "code": "INTERNAL_ERROR",
+            "message": str(exc),
+            "user_message": "Une erreur inattendue s'est produite. Réessayez plus tard.",
+        },
+    )
 
 
 if __name__ == "__main__":
