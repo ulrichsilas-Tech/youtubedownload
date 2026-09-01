@@ -14,10 +14,23 @@ Write-Host "  💡 Laisse cette fenetre OUVERTE." -ForegroundColor Yellow
 Write-Host "  Quand tu as fini, ferme-la pour tout arreter." -ForegroundColor Yellow
 Write-Host "==============================================" -ForegroundColor Cyan
 
-$portInUse = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
-if ($portInUse) { Write-Host "Erreur : le port $port est deja utilise. Ferme l'ancienne fenetre." -ForegroundColor Red; exit 1 }
+$existing = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+if ($existing) {
+    Write-Host "Port $port occupe - nettoyage de l'ancien serveur..." -ForegroundColor Yellow
+    $existing | ForEach-Object {
+        try { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } catch {}
+    }
+    Start-Sleep -Seconds 2
+    $existing = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+    if ($existing) { Write-Host "Erreur : le port $port est toujours occupe. Redemarre le PC." -ForegroundColor Red; exit 1 }
+    Write-Host "[OK] Ancien serveur arrete." -ForegroundColor Green
+}
 
 $serverProc = Start-Process -FilePath "python" -ArgumentList "main.py" -PassThru -NoNewWindow
+# Garantit l'arret meme si la fenetre est fermee via la croix
+$null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+    if ($serverProc -and -not $serverProc.HasExited) { Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue }
+} -ErrorAction SilentlyContinue
 function Test-PortOpen {
     $c = New-Object System.Net.Sockets.TcpClient
     try {
@@ -78,8 +91,11 @@ Write-Host "  Serveur en cours d'execution.                 " -ForegroundColor G
 Write-Host "  Ferme cette fenetre pour tout arreter.       " -ForegroundColor Yellow
 Write-Host "==============================================" -ForegroundColor Cyan
 Write-Host ""
-Read-Host "Appuie sur Entree pour arreter le serveur"
-
-# Arrêt du serveur quand on ferme
-if ($serverProc -and -not $serverProc.HasExited) { Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue }
+try {
+    Read-Host "Appuie sur Entree pour arreter le serveur"
+} finally {
+    if ($serverProc -and -not $serverProc.HasExited) { Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue }
+    Unregister-Event -SourceIdentifier PowerShell.Exiting -ErrorAction SilentlyContinue
+    Get-Job | Remove-Job -Force -ErrorAction SilentlyContinue
+}
 Pop-Location
