@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f0f1a">
+    <title>Universal Media Downloader</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+</head>
+<body x-data="app()" x-init="init()">
+    <header class="header">
+        <h1>Universal<span>Downloader</span></h1>
+        <button class="iconbtn" @click="showCookies = true" aria-label="Paramètres">⚙️</button>
+    </header>
+
+    <main class="main">
+        <div class="tabs" role="tablist">
+            <button role="tab" :class="{active: tab === 'url'}" @click="tab = 'url'" aria-selected="tab === 'url'">🔗 Lien</button>
+            <button role="tab" :class="{active: tab === 'search'}" @click="tab = 'search'" aria-selected="tab === 'search'">🔍 Recherche</button>
+            <button role="tab" :class="{active: tab === 'files'}" @click="tab = 'files'; loadFiles()" aria-selected="tab === 'files'">📂 Fichiers</button>
+        </div>
+
+        <div x-show="tab === 'url'" x-transition class="panel">
+            <label for="urlInput">URL du contenu (YouTube, Facebook, TikTok, Twitter, Instagram, Vimeo, etc.)</label>
+            <input id="urlInput" type="url" x-model="urlInput" placeholder="https://..." @keydown.enter="startDownloadFromUrl()" autocomplete="off" inputmode="url">
+            
+            <div class="format-options">
+                <div class="segmented">
+                    <button @click="formatKind = 'video'" :class="{active: formatKind === 'video'}">🎬 Vidéo</button>
+                    <button @click="formatKind = 'audio'" :class="{active: formatKind === 'audio'}">🎵 Audio</button>
+                </div>
+                
+                <div x-show="formatKind === 'video'">
+                    <label>Qualité vidéo</label>
+                    <select x-model="videoQuality">
+                        <option value="360">360p</option>
+                        <option value="480">480p</option>
+                        <option value="720" selected>720p HD</option>
+                        <option value="1080">1080p Full HD</option>
+                        <option value="best">Best available</option>
+                    </select>
+                </div>
+                
+                <div x-show="formatKind === 'audio'">
+                    <label>Format audio</label>
+                    <div class="segmented">
+                        <button @click="audioCodec = 'mp3'" :class="{active: audioCodec === 'mp3'}">MP3</button>
+                        <button @click="audioCodec = 'm4a'" :class="{active: audioCodec === 'm4a'}">M4A</button>
+                        <button @click="audioCodec = 'opus'" :class="{active: audioCodec === 'opus'}">OPUS</button>
+                    </div>
+                    <label>Bitrate</label>
+                    <select x-model="audioBitrate">
+                        <option value="128">128 kbps</option>
+                        <option value="192" selected>192 kbps</option>
+                        <option value="256">256 kbps</option>
+                        <option value="320">320 kbps</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn primary" @click="startDownloadFromUrl()" :disabled="downloading || !urlInput.trim()">
+                <span x-show="!downloading">⬇️ Télécharger</span>
+                <span x-show="downloading" class="spinner-inline"></span>
+            </button>
+        </div>
+
+        <div x-show="tab === 'search'" x-transition class="panel">
+            <label for="searchInput">Rechercher sur YouTube</label>
+            <div class="search-input-wrapper">
+                <input id="searchInput" type="text" x-model="searchQuery" placeholder="Artiste, titre, mots-clés..." @keydown.enter="doSearch()" autocomplete="off">
+                <button @click="doSearch()" :disabled="searching || !searchQuery.trim()">🔍</button>
+            </div>
+            
+            <div x-show="searchResults.length > 0" class="search-results">
+                <template x-for="result in searchResults" :key="result.id">
+                    <div class="result-item" @click="selectResult(result)">
+                        <img :src="result.thumbnail" :alt="result.title" loading="lazy" class="result-thumb">
+                        <div class="result-meta">
+                            <div class="result-title" x-text="result.title"></div>
+                            <div class="result-channel" x-text="result.channel"></div>
+                            <div class="result-meta-row">
+                                <span x-text="result.duration_str"></span>
+                                <span x-text="result.view_count ? formatNumber(result.view_count) + ' vues' : ''"></span>
+                            </div>
+                        </div>
+                        <button class="result-download" @click.stop="downloadFromSearch(result)" :disabled="downloading">
+                            <span x-show="!downloading">⬇️</span>
+                            <span x-show="downloading" class="spinner-mini"></span>
+                        </button>
+                    </div>
+                </template>
+            </div>
+            
+            <div x-show="searchResults.length === 0 && searched" class="empty-state">
+                Aucun résultat pour "<span x-text="searchQuery"></span>"
+            </div>
+            
+            <div x-show="searching" class="loading">Recherche en cours...</div>
+        </div>
+
+        <div x-show="tab === 'files'" x-transition class="panel">
+            <div class="files-header">
+                <h2>📂 Mes fichiers</h2>
+                <div class="storage-info">
+                    <span x-text="formatSize(storageStats.total_size)"></span> / <span x-text="formatSize(storageStats.max_size)"></span>
+                    <span class="usage-bar"><span :style="{width: storageStats.usage_percent + '%'}"></span></span>
+                </div>
+            </div>
+            
+            <div x-show="files.length === 0" class="empty-state">Aucun fichier. Téléchargez quelque chose !</div>
+            
+            <div class="file-list" x-show="files.length > 0">
+                <template x-for="file in files" :key="file.name">
+                    <div class="file-row">
+                        <div class="file-icon" x-text="file.is_audio ? '🎵' : '🎬'"></div>
+                        <div class="file-meta">
+                            <div class="file-name" x-text="file.name"></div>
+                            <div class="file-size" x-text="file.size_str"></div>
+                        </div>
+                        <div class="file-actions">
+                            <button @click="saveToFiles(file)" title="Enregistrer dans Fichiers" aria-label="Enregistrer">💾</button>
+                            <button @click="openFile(file)" title="Ouvrir/Lire" aria-label="Ouvrir">▶️</button>
+                            <button @click="deleteFile(file)" title="Supprimer" aria-label="Supprimer" class="danger">🗑️</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            
+            <button class="btn ghost" @click="cleanupFiles()">🧹 Nettoyer (expirés + quota)</button>
+        </div>
+
+        <div x-show="status" class="status" :class="statusType" x-text="status"></div>
+    </main>
+
+    <div x-show="showCookies" class="overlay" @click.self="showCookies = false" role="dialog" aria-modal="true" aria-labelledby="cookies-title">
+        <div class="panel cookies-panel">
+            <h2 id="cookies-title">🍪 Cookies par plateforme</h2>
+            <p class="sub">Certaines plateformes (YouTube, Facebook, TikTok, Twitter, Instagram) nécessitent vos cookies pour accéder au contenu privé ou contourner les blocages.</p>
+            
+            <template x-for="platform in cookiePlatforms" :key="platform">
+                <div class="cookie-section">
+                    <h3 x-text="platform"></h3>
+                    <div class="cookie-status" x-text="cookieStatus[platform] ? '✅ Configuré' : '❌ Non configuré'"></div>
+                    <textarea :id="'cookies-' + platform" placeholder="Collez vos cookies (format Netscape)..." rows="4"></textarea>
+                    <div class="cookie-actions">
+                        <button class="btn primary" @click="saveCookies(platform)">💾 Enregistrer</button>
+                        <button class="btn ghost" @click="deleteCookies(platform)">🗑️ Supprimer</button>
+                    </div>
+                    <div class="cookie-hint" x-show="platform === 'youtube'">Extension recommandée : "Get cookies.txt" (Chrome/Firefox) → Exporter → Coller ici</div>
+                </div>
+            </template>
+            
+            <button class="btn ghost" @click="showCookies = false">Fermer</button>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

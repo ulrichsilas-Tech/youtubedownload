@@ -1,17 +1,37 @@
 services:
   - type: web
-    name: yt-dlp-api
+    name: universal-media-downloader
     env: docker
     region: frankfurt
     plan: free
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /health
+    healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: DOWNLOAD_DIR
         value: "/tmp/downloads"
+      - key: MAX_FILE_SIZE
+        value: "524288000"
+      - key: MAX_LIBRARY_SIZE
+        value: "524288000"
+      - key: MAX_FILE_AGE_HOURS
+        value: "24"
+      - key: CLEANUP_INTERVAL_MINUTES
+        value: "30"
+      - key: RATE_LIMIT_REQUESTS
+        value: "5"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: YT_SEARCH_LIMIT
+        value: "20"
+      - key: DOWNLOAD_TIMEOUT
+        value: "180"
+      - key: MAX_VIDEO_HEIGHT
+        value: "1080"
+      - key: MAX_AUDIO_BITRATE
+        value: "320"
     disk:
       name: downloads
       mountPath: /tmp/downloads
