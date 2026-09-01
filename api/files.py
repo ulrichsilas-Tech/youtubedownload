@@ -90,6 +90,7 @@ async def serve_file(name: str):
         headers={
             "Accept-Ranges": "bytes",
             "Cache-Control": "public, max-age=3600",
+            "Content-Disposition": f'attachment; filename="{name}"',
         }
     )
 

@@ -48,7 +48,8 @@ async def search_youtube(
     if not query:
         raise HTTPException(status_code=400, detail="Requête vide")
     
-    limit = min(per_page * page, config.YT_SEARCH_LIMIT)
+    # +5 pour compenser le filtrage des chaines/playlists
+    limit = min(per_page * page + 5, config.YT_SEARCH_LIMIT)
     
     opts = build_ydl_options(
         platform=Platform.YOUTUBE,
@@ -87,22 +88,45 @@ async def search_youtube(
     if not entries:
         return SearchResponse(query=query, results=[], page=page, per_page=per_page, total=0)
     
+    # Filtrer d'abord (chaines/playlists), puis paginer pour garantir per_page resultats
+    filtered = []
+    for e in entries:
+        if not e:
+            continue
+        if e.get("ie_key") and e.get("ie_key") != "Youtube":
+            continue
+        vid = e.get("id", "")
+        if not vid:
+            continue
+        if len(vid) == 24 and vid.startswith(("UC", "UU", "PL", "RD", "OL")):
+            if e.get("ie_key") != "Youtube":
+                continue
+        filtered.append(e)
+    
     start = (page - 1) * per_page
     end = start + per_page
-    page_entries = entries[start:end]
+    page_entries = filtered[start:end]
     
     results = []
     for e in page_entries:
-        if not e:
-            continue
+        vid = e.get("id", "")
+        # yt-dlp en mode flat ne renvoie pas toujours thumbnail → fallback i.ytimg.com
+        thumb = e.get("thumbnail")
+        if not thumb:
+            thumbs = e.get("thumbnails") or []
+            if thumbs:
+                # prendre la meilleure miniature disponible
+                thumb = (thumbs[-1] or {}).get("url") or (thumbs[0] or {}).get("url")
+        if not thumb and vid:
+            thumb = f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
         results.append(SearchResult(
-            id=e.get("id", ""),
+            id=vid,
             title=e.get("title", "Sans titre"),
             channel=e.get("channel") or e.get("uploader") or "Inconnu",
             duration=e.get("duration"),
             duration_str=_format_duration(e.get("duration")) if e.get("duration") else None,
-            thumbnail=e.get("thumbnail"),
-            url=f"https://www.youtube.com/watch?v={e.get('id')}",
+            thumbnail=thumb,
+            url=f"https://www.youtube.com/watch?v={vid}",
             view_count=e.get("view_count"),
             upload_date=_format_upload_date(e.get("upload_date")) if e.get("upload_date") else None,
         ))

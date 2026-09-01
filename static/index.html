@@ -80,8 +80,8 @@
             
             <div x-show="searchResults.length > 0" class="search-results">
                 <template x-for="result in searchResults" :key="result.id">
-                    <div class="result-item" @click="selectResult(result)">
-                        <img :src="result.thumbnail" :alt="result.title" loading="lazy" class="result-thumb">
+                    <div class="result-item">
+                        <img :src="result.thumbnail" :alt="result.title" loading="lazy" class="result-thumb" @error="$el.src='https://i.ytimg.com/vi/'+result.id+'/hqdefault.jpg'" onerror="this.src='https://i.ytimg.com/vi/'+this.getAttribute('data-id')+'/hqdefault.jpg'" :data-id="result.id">
                         <div class="result-meta">
                             <div class="result-title" x-text="result.title"></div>
                             <div class="result-channel" x-text="result.channel"></div>
@@ -90,9 +90,9 @@
                                 <span x-text="result.view_count ? formatNumber(result.view_count) + ' vues' : ''"></span>
                             </div>
                         </div>
-                        <button class="result-download" @click.stop="downloadFromSearch(result)" :disabled="downloading">
-                            <span x-show="!downloading">⬇️</span>
-                            <span x-show="downloading" class="spinner-mini"></span>
+                        <button class="result-download" @click.stop="downloadFromSearch(result)" :disabled="downloadingId === result.id" :title="'Télécharger ' + result.title">
+                            <span x-show="downloadingId !== result.id">⬇️</span>
+                            <span x-show="downloadingId === result.id" class="spinner-mini"></span>
                         </button>
                     </div>
                 </template>
@@ -137,6 +137,14 @@
         </div>
 
         <div x-show="status" class="status" :class="statusType" x-text="status"></div>
+        <div x-show="lastDownload" class="panel" style="margin-top:12px">
+            <button class="btn primary" @click="saveLastDownload()">💾 Enregistrer dans Fichiers → Documents → Inbox</button>
+            <div class="hint">Sur iPhone : choisis <b>Enregistrer dans Fichiers</b> → <b>Documents</b> → <b>Inbox</b> → Enregistrer. Fonctionne pour vidéo et audio.</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn ghost" @click="openFile({name: lastDownload.filename})">▶️ Ouvrir</button>
+                <a class="btn ghost" style="text-align:center;text-decoration:none;line-height:38px" :href="lastDownload ? '/api/v1/files/'+encodeURIComponent(lastDownload.filename) : '#'" :download="lastDownload ? lastDownload.filename : ''" target="_blank">⬇️ Lien direct</a>
+            </div>
+        </div>
     </main>
 
     <div x-show="showCookies" class="overlay" @click.self="showCookies = false" role="dialog" aria-modal="true" aria-labelledby="cookies-title">

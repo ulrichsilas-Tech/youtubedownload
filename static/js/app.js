@@ -7,6 +7,8 @@ function app() {
         audioCodec: 'mp3',
         audioBitrate: '192',
         downloading: false,
+        downloadingId: null,
+        lastDownload: null,
         status: '',
         statusType: 'info',
         
@@ -79,11 +81,12 @@ function app() {
                 const job = await this.api('/download/' + jobId);
                 
                 if (job.status === 'downloading') {
-                    this.setStatus(`⬇️ ${Math.round(job.progress)}%`, 'info');
+                    this.setStatus(`⬇️ ${Math.round(job.progress)}% — ${job.result ? job.result.filename : ''}`, 'info');
                 } else if (job.status === 'processing') {
                     this.setStatus('⚙️ Traitement...', 'info');
                 } else if (job.status === 'completed') {
-                    this.setStatus('✅ ' + job.result.filename, 'success');
+                    this.lastDownload = job.result;
+                    this.setStatus('✅ Prêt : ' + job.result.filename, 'success');
                     this.urlInput = '';
                     this.loadFiles();
                     break;
@@ -116,9 +119,9 @@ function app() {
         },
         
         async downloadFromSearch(result) {
-            this.downloading = true;
+            if (this.downloadingId) return;
+            this.downloadingId = result.id;
             this.clearStatus();
-            
             try {
                 const job = await this.api('/search/download', {
                     method: 'POST',
@@ -130,13 +133,12 @@ function app() {
                         bitrate: this.audioBitrate
                     })
                 });
-                
-                this.setStatus('⏳ Téléchargement démarré...', 'info');
+                this.setStatus('⏳ ' + result.title.substring(0,40) + '…', 'info');
                 await this.pollJob(job.job_id);
             } catch (e) {
                 this.setStatus('❌ ' + (e.user_message || e.message || 'Erreur'), 'error');
             } finally {
-                this.downloading = false;
+                this.downloadingId = null;
             }
         },
         
@@ -155,26 +157,48 @@ function app() {
         },
         
         async saveToFiles(file) {
+            const url = '/api/v1/files/' + encodeURIComponent(file.name);
             try {
-                const res = await fetch('/api/v1/files/' + encodeURIComponent(file.name));
-                const blob = await res.blob();
-                const f = new File([blob], file.name, { type: blob.type || 'application/octet-stream' });
-                
-                if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
-                    await navigator.share({ files: [f] });
-                    this.setStatus('✅ Partage ouvert', 'success');
-                } else {
+                // 1) Essai via Web Share API (iOS : permet Choisir -> Enregistrer dans Fichiers -> Documents > Inbox)
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('Fichier introuvable');
+                    const blob = await res.blob();
+                    const f = new File([blob], file.name, { type: blob.type || 'application/octet-stream' });
+                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+                        await navigator.share({ files: [f], title: file.name });
+                        this.setStatus('✅ Choisis "Enregistrer dans Fichiers" → Documents → Inbox', 'success');
+                        return;
+                    }
+                    // fallback blob URL meme si share non disponible
+                    const blobUrl = URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = '/api/v1/files/' + encodeURIComponent(file.name);
+                    a.href = blobUrl;
                     a.download = file.name;
                     document.body.appendChild(a);
                     a.click();
-                    a.remove();
-                    this.setStatus('✅ Téléchargement lancé', 'success');
+                    setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+                    this.setStatus('✅ Fichier téléchargé — ouvre-le puis "Enregistrer dans Fichiers" → Inbox', 'success');
+                    return;
+                } catch (shareErr) {
+                    if (shareErr.name === 'AbortError') return;
+                    // dernier fallback : lien direct avec Content-Disposition attachment
                 }
+                const a2 = document.createElement('a');
+                a2.href = url;
+                a2.download = file.name;
+                a2.target = '_blank';
+                document.body.appendChild(a2);
+                a2.click();
+                a2.remove();
+                this.setStatus('✅ Si le fichier s\'ouvre, fais Partager → Enregistrer dans Fichiers → Inbox', 'success');
             } catch (e) {
                 if (e.name !== 'AbortError') this.setStatus('❌ ' + e.message, 'error');
             }
+        },
+        async saveLastDownload() {
+            if (!this.lastDownload) return;
+            await this.saveToFiles({ name: this.lastDownload.filename });
         },
         
         openFile(file) {
