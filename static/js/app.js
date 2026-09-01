@@ -9,6 +9,7 @@ function app() {
         downloading: false,
         downloadingId: null,
         lastDownload: null,
+        urlJob: null, // {id, progress, status, filename}
         status: '',
         statusType: 'info',
         
@@ -17,6 +18,14 @@ function app() {
         searched: false,
         searchResults: [],
         selectedResult: null,
+        pickingId: null,
+        pickingInfo: null,
+        pickingLoading: false,
+        pickKind: 'video',
+        pickHeight: '720',
+        pickCodec: 'mp3',
+        pickBitrate: '192',
+        progressById: {}, // id -> {progress, status, filename}
         
         files: [],
         storageStats: {},
@@ -48,46 +57,58 @@ function app() {
         clearStatus() {
             this.status = '';
         },
+
+        async fetchInfo(url) {
+            const data = await this.api('/info?url=' + encodeURIComponent(url));
+            return data;
+        },
         
         async startDownloadFromUrl() {
             if (!this.urlInput.trim() || this.downloading) return;
+            const url = this.urlInput.trim();
             this.downloading = true;
+            this.urlJob = { progress: 0, status: 'pending', filename: '' };
             this.clearStatus();
-            
+            // si on n'a pas encore analyse, on utilise les choix globaux directement
             try {
                 const job = await this.api('/download', {
                     method: 'POST',
                     body: JSON.stringify({
-                        url: this.urlInput.trim(),
+                        url: url,
                         kind: this.formatKind,
                         height: this.videoQuality,
                         codec: this.audioCodec,
                         bitrate: this.audioBitrate
                     })
                 });
-                
+                this.urlJob.id = job.job_id;
                 this.setStatus('⏳ Téléchargement démarré...', 'info');
-                await this.pollJob(job.job_id);
+                await this.pollJob(job.job_id, (j) => {
+                    this.urlJob.progress = j.progress;
+                    this.urlJob.status = j.status;
+                    if (j.result) this.urlJob.filename = j.result.filename;
+                });
+                // pollJob met lastDownload
             } catch (e) {
                 this.setStatus('❌ ' + (e.user_message || e.message || 'Erreur'), 'error');
+                this.urlJob = null;
             } finally {
                 this.downloading = false;
             }
         },
-        
-        async pollJob(jobId) {
+
+        async pollJob(jobId, onProgress) {
             while (true) {
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(r => setTimeout(r, 900));
                 const job = await this.api('/download/' + jobId);
-                
+                if (onProgress) onProgress(job);
                 if (job.status === 'downloading') {
-                    this.setStatus(`⬇️ ${Math.round(job.progress)}% — ${job.result ? job.result.filename : ''}`, 'info');
+                    if (!this.urlJob) this.setStatus(`⬇️ ${Math.round(job.progress)}%`, 'info');
                 } else if (job.status === 'processing') {
-                    this.setStatus('⚙️ Traitement...', 'info');
+                    if (!this.urlJob) this.setStatus('⚙️ Traitement...', 'info');
                 } else if (job.status === 'completed') {
                     this.lastDownload = job.result;
-                    this.setStatus('✅ Prêt : ' + job.result.filename, 'success');
-                    this.urlInput = '';
+                    if (!this.urlJob) this.setStatus('✅ Prêt : ' + job.result.filename, 'success');
                     this.loadFiles();
                     break;
                 } else if (job.status === 'failed') {
@@ -101,11 +122,13 @@ function app() {
             this.searching = true;
             this.searched = true;
             this.searchResults = [];
+            this.pickingId = null;
             this.setStatus('🔍 Recherche...', 'info');
             
             try {
-                const res = await this.api(`/search?q=${encodeURIComponent(this.searchQuery.trim())}&per_page=20`);
+                const res = await this.api(`/search?q=${encodeURIComponent(this.searchQuery.trim())}&per_page=12`);
                 this.searchResults = res.results;
+                this.progressById = {};
                 this.setStatus(`${res.results.length} résultat(s)`, 'success');
             } catch (e) {
                 this.setStatus('❌ ' + (e.user_message || 'Erreur recherche'), 'error');
@@ -117,29 +140,73 @@ function app() {
         selectResult(result) {
             this.selectedResult = result;
         },
+
+        async openPicker(result) {
+            if (this.pickingId === result.id) { this.pickingId = null; return; }
+            this.pickingId = result.id;
+            this.pickingInfo = null;
+            this.pickingLoading = true;
+            this.pickKind = this.formatKind;
+            this.pickHeight = this.videoQuality;
+            this.pickCodec = this.audioCodec;
+            this.pickBitrate = this.audioBitrate;
+            try {
+                const info = await this.fetchInfo(result.url);
+                this.pickingInfo = info;
+                // adapter les choix aux formats dispo
+                if (!info.supports_video) this.pickKind = 'audio';
+                if (!info.supports_audio && info.supports_video) this.pickKind = 'video';
+                // filtrer qualites proposees
+                if (info.formats && info.formats.video && info.formats.video.length) {
+                    const vs = info.formats.video;
+                    if (!vs.includes(this.pickHeight) && this.pickHeight !== 'best') {
+                        // prendre la plus proche disponible
+                        this.pickHeight = vs[0] || '720';
+                        if (this.pickHeight.endsWith('p')) this.pickHeight = this.pickHeight.replace('p','');
+                    }
+                }
+            } catch (e) {
+                // pas bloquant, on garde les choix globaux
+                console.warn('info failed', e);
+            } finally {
+                this.pickingLoading = false;
+            }
+        },
+
+        closePicker() { this.pickingId = null; this.pickingInfo = null; },
         
-        async downloadFromSearch(result) {
+        async confirmPickerDownload(result) {
             if (this.downloadingId) return;
             this.downloadingId = result.id;
+            this.progressById[result.id] = { progress: 0, status: 'pending', filename: result.title };
             this.clearStatus();
             try {
                 const job = await this.api('/search/download', {
                     method: 'POST',
                     body: JSON.stringify({
                         video_id: result.id,
-                        kind: this.formatKind,
-                        height: this.videoQuality,
-                        codec: this.audioCodec,
-                        bitrate: this.audioBitrate
+                        kind: this.pickKind,
+                        height: this.pickHeight,
+                        codec: this.pickCodec,
+                        bitrate: this.pickBitrate
                     })
                 });
-                this.setStatus('⏳ ' + result.title.substring(0,40) + '…', 'info');
-                await this.pollJob(job.job_id);
+                await this.pollJob(job.job_id, (j) => {
+                    this.progressById[result.id] = { progress: j.progress, status: j.status, filename: j.result ? j.result.filename : result.title };
+                });
+                this.setStatus('✅ ' + result.title.substring(0,35) + ' → prêt', 'success');
             } catch (e) {
                 this.setStatus('❌ ' + (e.user_message || e.message || 'Erreur'), 'error');
+                this.progressById[result.id] = { progress: 0, status: 'failed', filename: result.title };
             } finally {
                 this.downloadingId = null;
+                setTimeout(() => { this.pickingId = null; }, 800);
             }
+        },
+        
+        async downloadFromSearch(result) {
+            // legacy: ouvre le picker au lieu de telecharger direct
+            this.openPicker(result);
         },
         
         async loadFiles() {
@@ -159,7 +226,6 @@ function app() {
         async saveToFiles(file) {
             const url = '/api/v1/files/' + encodeURIComponent(file.name);
             try {
-                // 1) Essai via Web Share API (iOS : permet Choisir -> Enregistrer dans Fichiers -> Documents > Inbox)
                 try {
                     const res = await fetch(url);
                     if (!res.ok) throw new Error('Fichier introuvable');
@@ -170,7 +236,6 @@ function app() {
                         this.setStatus('✅ Choisis "Enregistrer dans Fichiers" → Documents → Inbox', 'success');
                         return;
                     }
-                    // fallback blob URL meme si share non disponible
                     const blobUrl = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = blobUrl;
@@ -182,7 +247,6 @@ function app() {
                     return;
                 } catch (shareErr) {
                     if (shareErr.name === 'AbortError') return;
-                    // dernier fallback : lien direct avec Content-Disposition attachment
                 }
                 const a2 = document.createElement('a');
                 a2.href = url;

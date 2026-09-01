@@ -69,6 +69,12 @@
                 <span x-show="!downloading">⬇️ Télécharger</span>
                 <span x-show="downloading" class="spinner-inline"></span>
             </button>
+            <div x-show="urlJob" class="url-progress">
+                <div class="fname" x-text="urlJob.filename || urlInput"></div>
+                <div class="progress-track"><div class="progress-fill" :style="{width: (urlJob.progress||0) + '%'}"></div></div>
+                <div class="progress-meta"><span x-text="urlJob.status === 'downloading' ? Math.round(urlJob.progress) + '%' : urlJob.status === 'processing' ? 'Traitement…' : urlJob.status"></span><span class="badge" :class="urlJob.status==='completed' ? 'ok' : ''" x-text="urlJob.status"></span></div>
+                <div x-show="urlJob.status==='downloading'" class="hint" style="margin-top:6px">Ne ferme pas la page — progression en temps reel</div>
+            </div>
         </div>
 
         <div x-show="tab === 'search'" x-transition class="panel">
@@ -80,20 +86,72 @@
             
             <div x-show="searchResults.length > 0" class="search-results">
                 <template x-for="result in searchResults" :key="result.id">
-                    <div class="result-item">
-                        <img :src="result.thumbnail" :alt="result.title" loading="lazy" class="result-thumb" @error="$el.src='https://i.ytimg.com/vi/'+result.id+'/hqdefault.jpg'" onerror="this.src='https://i.ytimg.com/vi/'+this.getAttribute('data-id')+'/hqdefault.jpg'" :data-id="result.id">
-                        <div class="result-meta">
-                            <div class="result-title" x-text="result.title"></div>
-                            <div class="result-channel" x-text="result.channel"></div>
-                            <div class="result-meta-row">
-                                <span x-text="result.duration_str"></span>
-                                <span x-text="result.view_count ? formatNumber(result.view_count) + ' vues' : ''"></span>
+                    <div class="result-item-wrap">
+                        <div class="result-item">
+                            <img :src="result.thumbnail" :alt="result.title" loading="lazy" class="result-thumb" @error="$el.src='https://i.ytimg.com/vi/'+result.id+'/hqdefault.jpg'" :data-id="result.id">
+                            <div class="result-meta">
+                                <div class="result-title" x-text="result.title"></div>
+                                <div class="result-channel" x-text="result.channel"></div>
+                                <div class="result-meta-row">
+                                    <span x-text="result.duration_str"></span>
+                                    <span x-text="result.view_count ? formatNumber(result.view_count) + ' vues' : ''"></span>
+                                </div>
+                            </div>
+                            <button class="result-download" @click.stop="openPicker(result)" :disabled="pickingLoading && pickingId===result.id" :title="'Choisir format pour ' + result.title">
+                                <span x-show="!(pickingLoading && pickingId===result.id)">⚙️</span>
+                                <span x-show="pickingLoading && pickingId===result.id" class="spinner-mini"></span>
+                            </button>
+                        </div>
+                        <!-- Barre de progression directement sous le nom, visible sans scroller -->
+                        <div x-show="progressById[result.id]" class="progress-track"><div class="progress-fill" :style="{width: (progressById[result.id]?.progress||0) + '%'}"></div></div>
+                        <div x-show="progressById[result.id]" class="progress-meta">
+                            <span x-text="progressById[result.id]?.status === 'downloading' ? Math.round(progressById[result.id].progress) + '% • Téléchargement…' : progressById[result.id]?.status === 'processing' ? 'Traitement…' : progressById[result.id]?.status === 'completed' ? '✅ Terminé' : progressById[result.id]?.status === 'failed' ? '❌ Échec' : ''"></span>
+                            <span x-text="progressById[result.id]?.filename || ''" style="max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                        </div>
+                        <!-- Sélecteur de format / qualité avant téléchargement -->
+                        <div x-show="pickingId === result.id" class="picker">
+                            <h4>Choisir le format <button class="close" @click="closePicker()">✕</button></h4>
+                            <div x-show="pickingLoading" class="loading" style="padding:8px">Analyse des formats…</div>
+                            <div x-show="!pickingLoading">
+                                <div class="segmented">
+                                    <button @click="pickKind='video'" :class="{active: pickKind==='video'}" x-show="!pickingInfo || pickingInfo.supports_video">🎬 Vidéo</button>
+                                    <button @click="pickKind='audio'" :class="{active: pickKind==='audio'}" x-show="!pickingInfo || pickingInfo.supports_audio">🎵 Audio</button>
+                                </div>
+                                <div x-show="pickKind==='video'">
+                                    <label>Qualité vidéo</label>
+                                    <select x-model="pickHeight">
+                                        <option value="360">360p</option>
+                                        <option value="480">480p</option>
+                                        <option value="720">720p HD</option>
+                                        <option value="1080">1080p</option>
+                                        <option value="best">Best disponible</option>
+                                    </select>
+                                    <div class="hint" x-show="pickingInfo">Disponible : <span x-text="pickingInfo ? pickingInfo.formats.video.join(', ') : 'analyse…'"></span> • Choisis la qualité souhaitée, le serveur prendra le meilleur ≤ demandé.</div>
+                                    <div class="hint" x-show="!pickingInfo">Analyse en cours…</div>
+                                </div>
+                                <div x-show="pickKind==='audio'">
+                                    <label>Format audio</label>
+                                    <div class="segmented">
+                                        <button @click="pickCodec='mp3'" :class="{active: pickCodec==='mp3'}">MP3</button>
+                                        <button @click="pickCodec='m4a'" :class="{active: pickCodec==='m4a'}">M4A</button>
+                                        <button @click="pickCodec='opus'" :class="{active: pickCodec==='opus'}">OPUS</button>
+                                    </div>
+                                    <label>Bitrate</label>
+                                    <select x-model="pickBitrate">
+                                        <option value="128">128 kbps</option>
+                                        <option value="192">192 kbps</option>
+                                        <option value="256">256 kbps</option>
+                                        <option value="320">320 kbps</option>
+                                    </select>
+                                    <div class="hint" x-show="pickingInfo">Audio dispo : <span x-text="pickingInfo ? pickingInfo.formats.audio.join(', ') : ''"></span></div>
+                                </div>
+                                <button class="btn primary" @click="confirmPickerDownload(result)" :disabled="downloadingId===result.id">
+                                    <span x-show="downloadingId!==result.id">⬇️ Télécharger cette vidéo</span>
+                                    <span x-show="downloadingId===result.id" class="spinner-inline"></span>
+                                </button>
+                                <div class="hint">Seule cette vidéo sera téléchargée, pas toute la liste.</div>
                             </div>
                         </div>
-                        <button class="result-download" @click.stop="downloadFromSearch(result)" :disabled="downloadingId === result.id" :title="'Télécharger ' + result.title">
-                            <span x-show="downloadingId !== result.id">⬇️</span>
-                            <span x-show="downloadingId === result.id" class="spinner-mini"></span>
-                        </button>
                     </div>
                 </template>
             </div>

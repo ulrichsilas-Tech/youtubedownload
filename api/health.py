@@ -101,6 +101,7 @@ async def rate_limit_middleware(request: Request, call_next):
         (path == "/api/v1/download" and request.method == "POST")
         or (path == "/api/v1/search/download" and request.method == "POST")
         or path.startswith("/api/v1/search")
+        or path.startswith("/api/v1/info")
     )
     if should_limit:
         client_ip = get_client_ip(request)
