@@ -221,6 +221,9 @@ class Downloader:
         msg = str(e).lower()
         logger.error(f"yt-dlp error for {platform.value}: {e}")
         
+        # TikTok specifique : extracteur casse regulierement
+        if platform == Platform.TIKTOK and ("unexpected response" in msg or "webpage request" in msg):
+            return ExtractorFailedError(platform.value, f"TikTok a modifié son site. L'extracteur est temporairement indisponible. Réessaie avec le lien de partage complet (vm.tiktok.com/...) ou attends la prochaine mise à jour yt-dlp. Détails: {str(e)[:200]}")
         if any(kw in msg for kw in ["sign in", "login", "authentication", "private", "members only"]):
             return AuthRequiredError(platform.value, str(e))
         if any(kw in msg for kw in ["geo", "country", "region", "not available in"]):

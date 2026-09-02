@@ -224,41 +224,41 @@ function app() {
         },
         
         async saveToFiles(file) {
-            const url = '/api/v1/files/' + encodeURIComponent(file.name) + '?download=1';
+            const downloadUrl = '/api/v1/files/' + encodeURIComponent(file.name) + '?download=1';
+            const inlineUrl = '/api/v1/files/' + encodeURIComponent(file.name) + '?inline=1';
+            // 1) Essai partage natif iOS (le plus fiable pour Documents > Inbox) — seulement si <50 Mo pour eviter OOM
             try {
-                try {
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error('Fichier introuvable');
+                const res = await fetch(downloadUrl);
+                if (res.ok) {
                     const blob = await res.blob();
-                    const f = new File([blob], file.name, { type: blob.type || 'application/octet-stream' });
-                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
-                        await navigator.share({ files: [f], title: file.name });
-                        this.setStatus('✅ Choisis "Enregistrer dans Fichiers" → Documents → Inbox', 'success');
+                    if (blob.size < 50 * 1024 * 1024) {
+                        const f = new File([blob], file.name, { type: blob.type || 'application/octet-stream' });
+                        if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+                            await navigator.share({ files: [f], title: file.name });
+                            this.setStatus('✅ Choisis "Enregistrer dans Fichiers" → Documents → Inbox → Enregistrer', 'success');
+                            return;
+                        }
+                    }
+                    // Fallback blob URL si partage non dispo mais blob deja recupere (petits fichiers)
+                    if (blob.size < 100 * 1024 * 1024) {
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = file.name;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1500);
+                        this.setStatus('✅ Téléchargement lancé — si ça ouvre, fais Partager → Enregistrer dans Fichiers → Documents → Inbox', 'success');
                         return;
                     }
-                    const blobUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = blobUrl;
-                    a.download = file.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
-                    this.setStatus('✅ Fichier téléchargé — ouvre-le puis "Enregistrer dans Fichiers" → Inbox', 'success');
-                    return;
-                } catch (shareErr) {
-                    if (shareErr.name === 'AbortError') return;
                 }
-                const a2 = document.createElement('a');
-                a2.href = url;
-                a2.download = file.name;
-                a2.target = '_blank';
-                document.body.appendChild(a2);
-                a2.click();
-                a2.remove();
-                this.setStatus('✅ Si le fichier s\'ouvre, fais Partager → Enregistrer dans Fichiers → Inbox', 'success');
             } catch (e) {
-                if (e.name !== 'AbortError') this.setStatus('❌ ' + e.message, 'error');
+                if (e && e.name === 'AbortError') return;
+                // on continue vers fallback ouverture inline
             }
+            // 2) Fallback le plus fiable sur iPhone : ouvrir en inline et laisser l'utilisateur faire Partager → Enregistrer
+            window.open(inlineUrl, '_blank');
+            this.setStatus('📂 Fichier ouvert dans un nouvel onglet — appuie sur Partager (carré avec flèche) → Enregistrer dans Fichiers → Documents → Inbox', 'success');
         },
         async saveLastDownload() {
             if (!this.lastDownload) return;
