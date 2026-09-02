@@ -62,7 +62,7 @@ async def list_files():
 
 
 @router.get("/files/{name}")
-async def serve_file(name: str):
+async def serve_file(name: str, download: int = 0, inline: int = 0):
     if Path(name).name != name:
         raise HTTPException(status_code=400, detail="Nom de fichier invalide")
     
@@ -83,6 +83,15 @@ async def serve_file(name: str):
         ".mov": "video/quicktime",
     }.get(ext, "application/octet-stream")
     
+    # inline=1 => lecture dans le navigateur (Ouvrir), sinon attachment pour Enregistrer
+    if inline:
+        disposition = f'inline; filename="{name}"'
+    else:
+        disposition = f'attachment; filename="{name}"'
+    # compat: ?download=1 force attachment, ?inline=1 force inline
+    if download:
+        disposition = f'attachment; filename="{name}"'
+    
     return FileResponse(
         path=filepath,
         filename=name,
@@ -90,7 +99,7 @@ async def serve_file(name: str):
         headers={
             "Accept-Ranges": "bytes",
             "Cache-Control": "public, max-age=3600",
-            "Content-Disposition": f'attachment; filename="{name}"',
+            "Content-Disposition": disposition,
         }
     )
 

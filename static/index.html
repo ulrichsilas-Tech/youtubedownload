@@ -196,9 +196,10 @@
             <button class="btn primary" @click="saveLastDownload()">💾 Enregistrer dans Fichiers → Documents → Inbox</button>
             <div class="hint">Sur iPhone : choisis <b>Enregistrer dans Fichiers</b> → <b>Documents</b> → <b>Inbox</b> → Enregistrer. Fonctionne pour vidéo et audio.</div>
             <div style="display:flex;gap:8px;margin-top:8px">
-                <button class="btn ghost" @click="openFile({name: lastDownload.filename})">▶️ Ouvrir</button>
-                <a class="btn ghost" style="text-align:center;text-decoration:none;line-height:38px" :href="lastDownload ? '/api/v1/files/'+encodeURIComponent(lastDownload.filename) : '#'" :download="lastDownload ? lastDownload.filename : ''" target="_blank">⬇️ Lien direct</a>
+                <button class="btn ghost" @click="openFile({name: lastDownload.filename})">▶️ Ouvrir / Lire</button>
+                <button class="btn ghost" @click="copyLink({name: lastDownload.filename})">🔗 Copier le lien</button>
             </div>
+            <div class="hint" style="margin-top:8px">▶️ <b>Ouvrir</b> = lecture directe dans le navigateur (inline). 🔗 <b>Copier le lien</b> = copie l'adresse du fichier à partager (lien direct).</div>
         </div>
     </main>
 

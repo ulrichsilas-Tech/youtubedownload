@@ -224,7 +224,7 @@ function app() {
         },
         
         async saveToFiles(file) {
-            const url = '/api/v1/files/' + encodeURIComponent(file.name);
+            const url = '/api/v1/files/' + encodeURIComponent(file.name) + '?download=1';
             try {
                 try {
                     const res = await fetch(url);
@@ -266,7 +266,17 @@ function app() {
         },
         
         openFile(file) {
-            window.open('/api/v1/files/' + encodeURIComponent(file.name), '_blank');
+            // inline=1 => lecture directe dans le navigateur (video/audio), pas de telechargement force
+            window.open('/api/v1/files/' + encodeURIComponent(file.name) + '?inline=1', '_blank');
+        },
+        async copyLink(file) {
+            const url = location.origin + '/api/v1/files/' + encodeURIComponent(file.name) + '?inline=1';
+            try {
+                await navigator.clipboard.writeText(url);
+                this.setStatus('🔗 Lien copie : ' + url, 'success');
+            } catch (e) {
+                prompt('Copie ce lien :', url);
+            }
         },
         
         async deleteFile(file) {
