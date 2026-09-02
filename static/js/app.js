@@ -269,14 +269,8 @@ function app() {
             // inline=1 => lecture directe dans le navigateur (video/audio), pas de telechargement force
             window.open('/api/v1/files/' + encodeURIComponent(file.name) + '?inline=1', '_blank');
         },
-        async copyLink(file) {
-            const url = location.origin + '/api/v1/files/' + encodeURIComponent(file.name) + '?inline=1';
-            try {
-                await navigator.clipboard.writeText(url);
-                this.setStatus('🔗 Lien copie : ' + url, 'success');
-            } catch (e) {
-                prompt('Copie ce lien :', url);
-            }
+        refreshPage() {
+            location.reload();
         },
         
         async deleteFile(file) {

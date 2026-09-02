@@ -197,9 +197,9 @@
             <div class="hint">Sur iPhone : choisis <b>Enregistrer dans Fichiers</b> → <b>Documents</b> → <b>Inbox</b> → Enregistrer. Fonctionne pour vidéo et audio.</div>
             <div style="display:flex;gap:8px;margin-top:8px">
                 <button class="btn ghost" @click="openFile({name: lastDownload.filename})">▶️ Ouvrir / Lire</button>
-                <button class="btn ghost" @click="copyLink({name: lastDownload.filename})">🔗 Copier le lien</button>
+                <button class="btn ghost" @click="refreshPage()">🔄 Actualiser la page</button>
             </div>
-            <div class="hint" style="margin-top:8px">▶️ <b>Ouvrir</b> = lecture directe (aperçu). 🔗 <b>Copier le lien</b> = copie l'adresse du fichier (utile pour partager par WhatsApp, coller dans Documents, ou ouvrir dans VLC).</div>
+            <div class="hint" style="margin-top:8px">▶️ <b>Ouvrir</b> = lecture directe (aperçu). 🔄 <b>Actualiser</b> = recharge la page pour voir les nouveaux fichiers.</div>
         </div>
     </main>
 
